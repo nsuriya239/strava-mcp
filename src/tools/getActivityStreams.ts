@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stravaApi } from '../stravaClient.js';
+import { stravaApi } from '../client/stravaClient.js';
 
 // Define stream types available in Strava API
 const STREAM_TYPES = [

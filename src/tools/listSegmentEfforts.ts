@@ -1,12 +1,9 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
 import { z } from "zod";
 import {
     listSegmentEfforts as fetchSegmentEfforts,
-    // handleApiError, // Removed unused import
-    StravaDetailedSegmentEffort // Type needed for formatter
-} from "../stravaClient.js";
-// We need the formatter, but can't import the full tool. Let's copy it here for now.
-// TODO: Move formatters to a shared utils.ts file
+} from '../client/stravaClient.js';
+import { StravaDetailedSegmentEffortType } from '../schema/index.js';
+import { formatDistance, formatDuration } from '../utils/formatters.js';
 
 // Zod schema for input validation
 const ListSegmentEffortsInputSchema = z.object({
@@ -18,26 +15,9 @@ const ListSegmentEffortsInputSchema = z.object({
 
 type ListSegmentEffortsInput = z.infer<typeof ListSegmentEffortsInputSchema>;
 
-// Helper Functions (Metric Only) - Copied locally
-function formatDuration(seconds: number | null | undefined): string {
-    if (seconds === null || seconds === undefined || isNaN(seconds) || seconds < 0) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    const parts: string[] = [];
-    if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
-    parts.push(minutes.toString().padStart(2, '0'));
-    parts.push(secs.toString().padStart(2, '0'));
-    return parts.join(':');
-}
-
-function formatDistance(meters: number | null | undefined): string {
-    if (meters === null || meters === undefined) return 'N/A';
-    return (meters / 1000).toFixed(2) + ' km';
-}
 
 // Format segment effort summary (Metric Only)
-function formatSegmentEffort(effort: StravaDetailedSegmentEffort): string {
+function formatSegmentEffort(effort: StravaDetailedSegmentEffortType): string {
     const movingTime = formatDuration(effort.moving_time);
     const elapsedTime = formatDuration(effort.elapsed_time);
     const distance = formatDistance(effort.distance);

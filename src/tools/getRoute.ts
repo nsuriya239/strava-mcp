@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getRouteById /*, handleApiError */ } from "../stravaClient.js"; // Removed handleApiError import
-import { formatRouteSummary } from "../formatters.js"; // Import shared formatter
+import { getRouteById /*, handleApiError */ } from '../client/stravaClient.js'; // Removed handleApiError import
+import { formatRouteSummary } from '../utils/formatters.js'; // Import shared formatter
 
 // Zod schema for input validation
 const GetRouteInputSchema = z.object({

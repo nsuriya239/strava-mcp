@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { getAllActivities as fetchAllActivities } from "../stravaClient.js";
+import { getAllActivities as fetchAllActivities } from '../client/stravaClient.js';
+import { formatDuration } from '../utils/formatters.js';
 
 // Common activity types
 export const ACTIVITY_TYPES = {
@@ -78,19 +79,6 @@ function formatActivitySummary(activity: any): string {
     return `${emoji} ${activity.name} (${type}) - ${distance} in ${duration} on ${date}`;
 }
 
-// Helper function to format duration
-function formatDuration(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-        return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-}
 
 // Export the tool definition
 export const getAllActivities = {

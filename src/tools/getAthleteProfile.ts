@@ -1,4 +1,4 @@
-import { getAuthenticatedAthlete } from "../stravaClient.js";
+import { getAuthenticatedAthlete } from '../client/stravaClient.js';
 
 // Export the tool definition directly
 export const getAthleteProfile = {

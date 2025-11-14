@@ -1,10 +1,10 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
+// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp"; // Removed
 import { z } from "zod";
 import {
     getActivityById as fetchActivityById,
-    StravaDetailedActivity // Type needed for formatter
-} from "../stravaClient.js";
-// import { formatDuration } from "../server.js"; // Removed, now local
+} from '../client/stravaClient.js';
+import { StravaDetailedActivityType } from '../schema/index.js';
+import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../utils/formatters.js';
 
 // Zod schema for input validation
 const GetActivityDetailsInputSchema = z.object({
@@ -13,44 +13,9 @@ const GetActivityDetailsInputSchema = z.object({
 
 type GetActivityDetailsInput = z.infer<typeof GetActivityDetailsInputSchema>;
 
-// Helper Functions (Metric Only)
-function formatDuration(seconds: number | null | undefined): string {
-    if (seconds === null || seconds === undefined || isNaN(seconds) || seconds < 0) return 'N/A';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    const parts: string[] = [];
-    if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
-    parts.push(minutes.toString().padStart(2, '0'));
-    parts.push(secs.toString().padStart(2, '0'));
-    return parts.join(':');
-}
-
-function formatDistance(meters: number | null | undefined): string {
-    if (meters === null || meters === undefined) return 'N/A';
-    return (meters / 1000).toFixed(2) + ' km';
-}
-
-function formatElevation(meters: number | null | undefined): string {
-    if (meters === null || meters === undefined) return 'N/A';
-    return Math.round(meters) + ' m';
-}
-
-function formatSpeed(mps: number | null | undefined): string {
-    if (mps === null || mps === undefined) return 'N/A';
-    return (mps * 3.6).toFixed(1) + ' km/h'; // Convert m/s to km/h
-}
-
-function formatPace(mps: number | null | undefined): string {
-    if (mps === null || mps === undefined || mps <= 0) return 'N/A';
-    const minutesPerKm = 1000 / (mps * 60);
-    const minutes = Math.floor(minutesPerKm);
-    const seconds = Math.round((minutesPerKm - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')} /km`;
-}
 
 // Format activity details (Metric Only)
-function formatActivityDetails(activity: StravaDetailedActivity): string {
+function formatActivityDetails(activity: StravaDetailedActivityType): string {
     const date = new Date(activity.start_date_local).toLocaleString();
     const movingTime = formatDuration(activity.moving_time);
     const elapsedTime = formatDuration(activity.elapsed_time);

@@ -1,11 +1,10 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
+// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp"; // Removed
 import { z } from "zod";
 import {
-    // getAuthenticatedAthlete as fetchAuthenticatedAthlete, // Removed
     getAthleteStats as fetchAthleteStats,
-    // handleApiError, // Removed unused import
-    StravaStats // Type needed for formatter
-} from "../stravaClient.js";
+} from '../client/stravaClient.js';
+import { StravaStatsType } from '../schema/index.js';
+import { formatStat } from '../utils/formatters.js';
 // formatDuration is now local or in utils, not imported from server.ts
 
 // Input schema: Now requires athleteId
@@ -16,46 +15,11 @@ const GetAthleteStatsInputSchema = z.object({
 // Define type alias for input
 type GetAthleteStatsInput = z.infer<typeof GetAthleteStatsInputSchema>;
 
-// Remove unused formatDuration function
-/*
-function formatDuration(seconds: number): string {
-    if (isNaN(seconds) || seconds < 0) {
-        return 'N/A';
-    }
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
 
-    const parts: string[] = [];
-    if (hours > 0) {
-        parts.push(hours.toString().padStart(2, '0'));
-    }
-    parts.push(minutes.toString().padStart(2, '0'));
-    parts.push(secs.toString().padStart(2, '0'));
 
-    return parts.join(':');
-}
-*/
-
-// Helper function to format numbers as strings with labels (metric)
-function formatStat(value: number | null | undefined, unit: 'km' | 'm' | 'hrs'): string {
-    if (value === null || value === undefined) return 'N/A';
-
-    let formattedValue: string;
-    if (unit === 'km') {
-        formattedValue = (value / 1000).toFixed(2);
-    } else if (unit === 'm') {
-        formattedValue = Math.round(value).toString();
-    } else if (unit === 'hrs') {
-        formattedValue = (value / 3600).toFixed(1);
-    } else {
-        formattedValue = value.toString();
-    }
-    return `${formattedValue} ${unit}`;
-}
 
 // Format athlete stats (metric only)
-function formatStats(stats: StravaStats): string {
+function formatStats(stats: StravaStatsType): string {
     const format = (label: string, total: number | null | undefined, unit: 'km' | 'm' | 'hrs', count?: number | null, time?: number | null) => {
         let line = `   - ${label}: ${formatStat(total, unit)}`;
         if (count !== undefined && count !== null) line += ` (${count} activities)`;
@@ -146,14 +110,3 @@ export const getAthleteStatsTool = {
         }
     }
 };
-
-// Removed old registration function
-/*
-export function registerGetAthleteStatsTool(server: McpServer) {
-    server.tool(
-        getAthleteStats.name,
-        getAthleteStats.description,
-        getAthleteStats.execute // No input schema
-    );
-}
-*/ 

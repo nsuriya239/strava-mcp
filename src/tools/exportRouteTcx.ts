@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { exportRouteTcx as fetchTcxData } from "../stravaClient.js";
+import { exportRouteTcx as fetchTcxData } from '../client/stravaClient.js';
 
 // Define the input schema for the tool
 const ExportRouteTcxInputSchema = z.object({

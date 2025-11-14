@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { getAthleteZones as fetchAthleteZones, StravaAthleteZones } from "../stravaClient.js";
-import { formatDuration } from "../server.js"; // Shared helper
+import { getAthleteZones as fetchAthleteZones } from '../client/stravaClient.js';
+import { formatDuration } from '../utils/formatters.js'; // Shared helper
+import { StravaAthleteZonesType } from '../schema/index.js';
 
 const name = "get-athlete-zones";
 const description = "Retrieves the authenticated athlete's configured heart rate and power zones.";
@@ -25,7 +26,7 @@ function formatDistribution(buckets: { max: number; min: number; time: number }[
 }
 
 // Format the zones response
-function formatAthleteZones(zonesData: StravaAthleteZones): string {
+function formatAthleteZones(zonesData: StravaAthleteZonesType): string {
     let responseText = "**Athlete Zones:**\n";
 
     if (zonesData.heart_rate) {

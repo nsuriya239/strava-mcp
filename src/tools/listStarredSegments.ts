@@ -1,5 +1,4 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
-import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from "../stravaClient.js"; // Renamed import
+import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from '../client/stravaClient.js'; // Renamed import
 
 // Export the tool definition directly
 export const listStarredSegments = {

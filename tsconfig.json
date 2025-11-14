@@ -15,9 +15,9 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
 
-    /* If NOT transpiling with TypeScript: */
-    "moduleResolution": "Bundler", // Use "NodeNext" or "Bundler" for modern Node.js
-    "module": "ESNext",           // Align with "type": "module" in package.json
+    /* Node.js ES Modules - requires .js extensions in source */
+    "moduleResolution": "NodeNext", // Enforces .js extensions (Node.js requirement)
+    "module": "NodeNext",           // ES modules with Node.js resolution
 
     /* If your code runs in the DOM: */
     // "lib": ["es2022", "dom", "dom.iterable"],

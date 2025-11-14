@@ -1,12 +1,8 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/r-huijts-strava-mcp-badge.png)](https://mseep.ai/app/r-huijts-strava-mcp)
-
 # Strava MCP Server
 
 This project implements a Model Context Protocol (MCP) server in TypeScript that acts as a bridge to the Strava API. It exposes Strava data and functionalities as "tools" that Large Language Models (LLMs) can utilize through the MCP standard.
 
-<a href="https://glama.ai/mcp/servers/@r-huijts/strava-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@r-huijts/strava-mcp/badge" alt="Strava Server MCP server" />
-</a>
+> NOTE: This repository is a fork of r-huijts/strava-mcp. It contains modifications and a slightly different project structure maintained under the branch `feature/refactor`.
 
 ## Features
 
@@ -112,7 +108,7 @@ Skipping steps or performing them out of order may result in environment variabl
 
 1. **Clone Repository:**
    ```bash
-   git clone https://github.com/r-huijts/strava-mcp.git
+   git clone https://github.com/nsuriya239/strava-mcp.git
    cd strava-mcp
    ```
 
@@ -662,10 +658,3 @@ Retrieves the authenticated athlete's configured heart rate and power zones.
 
 ---
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details. (Assuming MIT, update if different)

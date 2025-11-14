@@ -1,12 +1,8 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
 import { z } from "zod";
 import {
     listAthleteRoutes as fetchAthleteRoutes,
-    StravaRoute,
-    // StravaRoute is needed for the formatter
-} from "../stravaClient.js";
-// Remove the imported formatter since we're defining our own locally
-// import { formatRouteSummary } from "../formatters.js";
+} from '../client/stravaClient.js';
+import { StravaRouteType } from '../schema/index.js';
 
 // Define input schema with zod
 const ListAthleteRoutesInputSchema = z.object({
@@ -18,7 +14,7 @@ const ListAthleteRoutesInputSchema = z.object({
 type ListAthleteRoutesInput = z.infer<typeof ListAthleteRoutesInputSchema>;
 
 // Function to format a route for display
-function formatRouteSummary(route: StravaRoute): string {
+function formatRouteSummary(route: StravaRouteType): string {
     const distance = route.distance ? `${(route.distance / 1000).toFixed(1)} km` : 'N/A';
     const elevation = route.elevation_gain ? `${route.elevation_gain.toFixed(0)} m` : 'N/A';
     

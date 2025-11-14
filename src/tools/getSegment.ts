@@ -1,10 +1,10 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
+// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp"; // Removed
 import { z } from "zod";
 import {
     getSegmentById as fetchSegmentById,
     // handleApiError, // Removed unused import
-    StravaDetailedSegment // Type needed for formatter
-} from "../stravaClient.js";
+} from '../client/stravaClient.js';
+import { StravaDetailedSegmentType } from '../schema/index.js';
 
 // Input schema
 const GetSegmentInputSchema = z.object({
@@ -24,7 +24,7 @@ function formatElevation(meters: number | null | undefined): string {
 }
 
 // Format segment details (Metric Only)
-function formatSegmentDetails(segment: StravaDetailedSegment): string {
+function formatSegmentDetails(segment: StravaDetailedSegmentType): string {
     const distance = formatDistance(segment.distance);
     const elevationGain = formatElevation(segment.total_elevation_gain);
     const elevationHigh = formatElevation(segment.elevation_high);

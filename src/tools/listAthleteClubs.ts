@@ -1,5 +1,4 @@
-// import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"; // Removed
-import { listAthleteClubs as fetchClubs } from "../stravaClient.js"; // Renamed import
+import { listAthleteClubs as fetchClubs } from '../client/stravaClient.js'; // Renamed import
 
 // Export the tool definition directly
 export const listAthleteClubs = {
