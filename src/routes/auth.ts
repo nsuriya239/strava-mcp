@@ -79,18 +79,23 @@ export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAu
 
       const tokenData = await tokenResponse.json();
 
+      if (!validateResponse(tokenData)) {
+        log.error("Invalid token response from Strava");
+        return res.status(500).json({ error: "Invalid token response from Strava" });
+      }
+
       log.info(
-        `Successfully exchanged code for access token (athlete_id: ${tokenData.athlete?.id})`
+        `Successfully exchanged code for access token (athlete_id: ${tokenData.athlete.id})`
       );
 
-      const athlete_id = String(tokenData.athlete?.id)
+      const athlete_id = `${tokenData.athlete?.id}`
 
       // Return token data to client
       await stravaAuthRepository.upsert(athlete_id, {
-        userId: tokenData.athlete?.id,
+        userId: athlete_id,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        expiresAt: new Date(tokenData.expires_at * 1000),
+        expiresAt: new Date((tokenData.expires_at || 0) * 1000),
       });
 
       return res.json({
@@ -111,4 +116,11 @@ export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAu
     }
   };
 };
+
+const validateResponse = (response: any) => {
+  if (response.access_token && response.refresh_token && response.expires_at && response.athlete && response.athlete.id) {
+    return true
+  }
+  return false
+}
 
