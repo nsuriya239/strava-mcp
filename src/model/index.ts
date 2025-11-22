@@ -22,7 +22,8 @@ export const loadModels = async (sequelize: Sequelize): Promise<ModelRegistry> =
   const modelsPath = __dirname;
 
   const files = fs.readdirSync(modelsPath)
-    .filter((file) => file !== "index.ts" && file.endsWith(".ts"));
+    .filter((file) => file !== "index.ts" && file !== "index.js" && (file.endsWith(".ts") || file.endsWith(".js")));
+
 
   for (const file of files) {
     const filePath = path.join(modelsPath, file);
