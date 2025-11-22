@@ -25,20 +25,16 @@ export const initializeDbClient = async (config: Config) => {
       dbClient.close();
     },
   };
-  try {
-    await db.sequelize.sync({ force: true });
+  db.sequelize.sync().then(() => {
     log.info(`Database & tables created!`);
-  } catch (err) {
+  }).catch((err) => {
     log.error(`DB Sync error: ${err}`);
-  }
-  db.sequelize
-    .authenticate()
-    .then(() => {
-      log.info(`DB Connection Authenticated`);
-    })
-    .catch((err) => {
-      log.error(`DB Connection error: ${err}`);
-    });
+  });
+  db.sequelize.authenticate().then(() => {
+    log.info(`DB Connection Authenticated`);
+  }).catch((err) => {
+    log.error(`DB Connection error: ${err}`);
+  });
   log.info(`DB Initialized successfully`);
   return db;
 };
