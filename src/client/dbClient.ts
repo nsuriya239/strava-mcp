@@ -7,7 +7,7 @@ import { loadModels, ModelRegistry } from "../model/index.js";
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
 
-interface IDatabase {
+export interface IDatabase {
   sequelize: Sequelize;
   models: ModelRegistry;
   close: () => void;

@@ -7,6 +7,9 @@ import { StravaDetailedActivityType } from '../../schema/index.js';
 import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -55,20 +58,22 @@ function formatActivityDetails(activity: StravaDetailedActivityType): string {
     return details;
 }
 
-// Tool definition
-export const getActivityDetailsTool = {
-    name: "get-activity-details",
-    description: "Fetches detailed information about a specific activity using its ID.",
-    inputSchema: GetActivityDetailsInputSchema,
-    execute: async ({ strava_athlete_id, activityId }: GetActivityDetailsInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "get-activity-details",
+        description: "Fetches detailed information about a specific activity using its ID.",
+        inputSchema: GetActivityDetailsInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, activityId }: GetActivityDetailsInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -78,7 +83,7 @@ export const getActivityDetailsTool = {
             const activityDetailsText = formatActivityDetails(activity); // Use metric formatter
 
             log.info(`Successfully fetched details for activity: ${activity.name}`);
-            return { content: [{ type: "text" as const, text: activityDetailsText }] };
+            return generateSuccessResponse(activityDetailsText);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log.error(`Error fetching activity ${activityId}: ${errorMessage}`);
@@ -86,22 +91,7 @@ export const getActivityDetailsTool = {
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Activity with ID ${activityId} not found.`
                 : `An unexpected error occurred while fetching activity details for ID ${activityId}. Details: ${errorMessage}`;
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-};
-
-// Removed old registration function
-/*
-export function registerGetActivityDetailsTool(server: McpServer) {
-  server.tool(
-    getActivityDetails.name,
-    getActivityDetails.description,
-    getActivityDetails.inputSchema.shape,
-    getActivityDetails.execute
-  );
 }
-*/ 

@@ -6,6 +6,9 @@ import { StravaDetailedSegmentEffortType } from '../../schema/index.js';
 import { formatDistance, formatDuration } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -38,20 +41,22 @@ function formatSegmentEffort(effort: StravaDetailedSegmentEffortType): string {
     return summary;
 }
 
-// Tool definition
-export const listSegmentEffortsTool = {
-    name: "list-segment-efforts",
-    description: "Lists the authenticated athlete's efforts on a specific segment, optionally filtering by date.",
-    inputSchema: ListSegmentEffortsInputSchema,
-    execute: async ({ strava_athlete_id, segmentId, startDateLocal, endDateLocal, perPage }: ListSegmentEffortsInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "list-segment-efforts",
+        description: "Lists the authenticated athlete's efforts on a specific segment, optionally filtering by date.",
+        inputSchema: ListSegmentEffortsInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, segmentId, startDateLocal, endDateLocal, perPage }: ListSegmentEffortsInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -66,14 +71,14 @@ export const listSegmentEffortsTool = {
 
             if (!efforts || efforts.length === 0) {
                 log.error(`No efforts found for segment ${segmentId} with the given filters.`);
-                return { content: [{ type: "text" as const, text: `No efforts found for segment ${segmentId} matching the criteria.` }] };
+                return generateErrorResponse(`No efforts found for segment ${segmentId} matching the criteria.`);
             }
 
             log.error(`Successfully fetched ${efforts.length} efforts for segment ${segmentId}.`);
             const effortSummaries = efforts.map(effort => formatSegmentEffort(effort)); // Use metric formatter
             const responseText = `**Segment ${segmentId} Efforts:**\n\n${effortSummaries.join("\n")}`;
 
-            return { content: [{ type: "text" as const, text: responseText }] };
+            return generateSuccessResponse(responseText);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log.error(`Error listing efforts for segment ${segmentId}: ${errorMessage}`);
@@ -87,22 +92,7 @@ export const listSegmentEffortsTool = {
                 userFriendlyMessage = `An unexpected error occurred while listing efforts for segment ${segmentId}. Details: ${errorMessage}`;
             }
 
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-};
-
-// Removed old registration function
-/*
-export function registerListSegmentEffortsTool(server: McpServer) {
-    server.tool(
-        listSegmentEfforts.name,
-        listSegmentEfforts.description,
-        listSegmentEfforts.inputSchema.shape,
-        listSegmentEfforts.execute
-    );
 }
-*/ 

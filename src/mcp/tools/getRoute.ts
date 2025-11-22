@@ -4,6 +4,9 @@ import { formatRouteSummary } from '../../utils/formatters.js'; // Import shared
 
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -20,21 +23,23 @@ const GetRouteInputSchema = z.object({
 
 type GetRouteInput = z.infer<typeof GetRouteInputSchema>;
 
-// Tool definition
-export const getRouteTool = {
-    name: "get-route",
-    description: "Fetches detailed information about a specific route using its ID.",
-    inputSchema: GetRouteInputSchema,
-    execute: async (input: GetRouteInput) => {
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "get-route",
+        description: "Fetches detailed information about a specific route using its ID.",
+        inputSchema: GetRouteInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async (input: GetRouteInput) => {
         const { strava_athlete_id, routeId } = input;
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -43,31 +48,14 @@ export const getRouteTool = {
             const summary = formatRouteSummary(route); // Call shared formatter without units
 
             log.info(`Successfully fetched route ${routeId}.`);
-            return { content: [{ type: "text" as const, text: summary }] };
+            return generateSuccessResponse(summary);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log.error(`Error fetching route ${routeId}: ${errorMessage}`);
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Route with ID ${routeId} not found.`
                 : `An unexpected error occurred while fetching route ${routeId}. Details: ${errorMessage}`;
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-};
-
-// Removed local formatRouteSummary function
-
-// Removed old registration function
-/*
-export function registerGetRouteTool(server: McpServer) {
-    server.tool(
-        getRoute.name,
-        getRoute.description,
-        getRoute.inputSchema.shape,
-        getRoute.execute
-    );
 }
-*/ 

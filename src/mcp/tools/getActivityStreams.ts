@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { stravaApi } from '../../client/stravaClient.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 // Define stream types available in Strava API
 const STREAM_TYPES = [
@@ -134,45 +137,47 @@ type StreamSet = (TimeStream | DistanceStream | LatLngStream | AltitudeStream |
     VelocityStream | HeartrateStream | CadenceStream | PowerStream |
     TempStream | MovingStream | GradeStream)[];
 
-// Tool definition
-export const getActivityStreamsTool = {
-    name: 'get-activity-streams',
-    description:
-        'Retrieves detailed time-series data streams from a Strava activity. Perfect for analyzing workout metrics, ' +
-        'visualizing routes, or performing detailed activity analysis.\n\n' +
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: 'get-activity-streams',
+        description:
+            'Retrieves detailed time-series data streams from a Strava activity. Perfect for analyzing workout metrics, ' +
+            'visualizing routes, or performing detailed activity analysis.\n\n' +
 
-        'Key Features:\n' +
-        '1. Multiple Data Types: Access various metrics like heart rate, power, speed, GPS coordinates, etc.\n' +
-        '2. Flexible Resolution: Choose data density from low (~100 points) to high (~10000 points)\n' +
-        '3. Smart Pagination: Get data in manageable chunks or all at once\n' +
-        '4. Rich Statistics: Includes min/max/avg for numeric streams\n' +
-        '5. Formatted Output: Data is processed into human and LLM-friendly formats\n\n' +
+            'Key Features:\n' +
+            '1. Multiple Data Types: Access various metrics like heart rate, power, speed, GPS coordinates, etc.\n' +
+            '2. Flexible Resolution: Choose data density from low (~100 points) to high (~10000 points)\n' +
+            '3. Smart Pagination: Get data in manageable chunks or all at once\n' +
+            '4. Rich Statistics: Includes min/max/avg for numeric streams\n' +
+            '5. Formatted Output: Data is processed into human and LLM-friendly formats\n\n' +
 
-        'Common Use Cases:\n' +
-        '- Analyzing workout intensity through heart rate zones\n' +
-        '- Calculating power metrics for cycling activities\n' +
-        '- Visualizing route data using GPS coordinates\n' +
-        '- Analyzing pace and elevation changes\n' +
-        '- Detailed segment analysis\n\n' +
+            'Common Use Cases:\n' +
+            '- Analyzing workout intensity through heart rate zones\n' +
+            '- Calculating power metrics for cycling activities\n' +
+            '- Visualizing route data using GPS coordinates\n' +
+            '- Analyzing pace and elevation changes\n' +
+            '- Detailed segment analysis\n\n' +
 
-        'Output Format:\n' +
-        '1. Metadata: Activity overview, available streams, data points\n' +
-        '2. Statistics: Summary stats for each stream type (max/min/avg where applicable)\n' +
-        '3. Stream Data: Actual time-series data, formatted for easy use\n\n' +
+            'Output Format:\n' +
+            '1. Metadata: Activity overview, available streams, data points\n' +
+            '2. Statistics: Summary stats for each stream type (max/min/avg where applicable)\n' +
+            '3. Stream Data: Actual time-series data, formatted for easy use\n\n' +
 
-        'Notes:\n' +
-        '- Requires activity:read scope\n' +
-        '- Not all streams are available for all activities\n' +
-        '- Older activities might have limited data\n' +
-        '- Large activities are automatically paginated to handle size limits',
-    inputSchema,
-    execute: async ({ strava_athlete_id, id, types, resolution, series_type, page = 1, points_per_page = 100 }: GetActivityStreamsParams) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+            'Notes:\n' +
+            '- Requires activity:read scope\n' +
+            '- Not all streams are available for all activities\n' +
+            '- Older activities might have limited data\n' +
+            '- Large activities are automatically paginated to handle size limits',
+        inputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, id, types, resolution, series_type, page = 1, points_per_page = 100 }: GetActivityStreamsParams) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
         if (!token) {
-            return {
-                content: [{ type: 'text' as const, text: '❌ Missing STRAVA_ACCESS_TOKEN in .env' }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -194,16 +199,12 @@ export const getActivityStreamsTool = {
             const streams = response.data;
 
             if (!streams || streams.length === 0) {
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: '⚠️ No streams were returned. This could mean:\n' +
-                            '1. The activity was recorded without this data\n' +
-                            '2. The activity is not a GPS-based activity\n' +
-                            '3. The activity is too old (Strava may not keep all stream data indefinitely)'
-                    }],
-                    isError: true
-                };
+                return generateErrorResponse(
+                    '⚠️ No streams were returned. This could mean:\n' +
+                    '1. The activity was recorded without this data\n' +
+                    '2. The activity is not a GPS-based activity\n' +
+                    '3. The activity is too old (Strava may not keep all stream data indefinitely)'
+                );
             }
 
             // At this point we know streams[0] exists because we checked length > 0
@@ -365,13 +366,7 @@ export const getActivityStreamsTool = {
 
             // Validate page number
             if (page < 1 || page > totalPages) {
-                return {
-                    content: [{
-                        type: 'text' as const,
-                        text: `❌ Invalid page number. Please specify a page between 1 and ${totalPages}`
-                    }],
-                    isError: true
-                };
+                return generateErrorResponse(`❌ Invalid page number. Please specify a page between 1 and ${totalPages}`);
             }
 
             // Calculate slice indices for pagination
@@ -454,12 +449,7 @@ export const getActivityStreamsTool = {
                 streamData.streams[stream.type] = processedData;
             });
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: JSON.stringify(streamData, null, 2)
-                }]
-            };
+            return generateSuccessResponse(JSON.stringify(streamData, null, 2));
         } catch (error: any) {
             const statusCode = error.response?.status;
             const errorMessage = error.response?.data?.message || error.message;
@@ -471,16 +461,10 @@ export const getActivityStreamsTool = {
             userFriendlyError += '3. The requested stream types are not available\n';
             userFriendlyError += '4. The activity is too old and the streams have been archived';
 
-            return {
-                content: [{
-                    type: 'text' as const,
-                    text: userFriendlyError
-                }],
-                isError: true
-            };
+            return generateErrorResponse(userFriendlyError);
         }
     }
-};
+}
 
 // Helper function to calculate normalized power
 function calculateNormalizedPower(powerData: number[]): number {
@@ -502,4 +486,4 @@ function calculateNormalizedPower(powerData: number[]): number {
     );
 
     return Math.round(avgPower);
-} 
+}

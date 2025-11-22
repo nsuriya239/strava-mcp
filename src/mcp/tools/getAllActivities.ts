@@ -3,6 +3,9 @@ import { fileURLToPath } from "url";
 import { getAllActivities as fetchAllActivities } from '../../client/stravaClient.js';
 import { formatDuration } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -97,22 +100,23 @@ function formatActivitySummary(activity: any): string {
     return `${emoji} ${activity.name} (${type}) - Covered ${distance} in ${duration} on ${date} ${type === 'Ride' || type === 'Run' ? `with ${elevation} elevation gain` : ''}`;
 }
 
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "get-all-activities",
+        description: "Fetches complete activity history with optional filtering by date range and activity type. Supports pagination to retrieve all activities.",
+        inputSchema: GetAllActivitiesInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
 
-// Export the tool definition
-export const getAllActivities = {
-    name: "get-all-activities",
-    description: "Fetches complete activity history with optional filtering by date range and activity type. Supports pagination to retrieve all activities.",
-    inputSchema: GetAllActivitiesInputSchema,
-    execute: async (input: GetAllActivitiesInput) => {
-        const { strava_athlete_id, ...restInput } = input;
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async (input: GetAllActivitiesInput) => {
+        const { strava_athlete_id } = input;
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
-        if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-            return {
-                content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-                isError: true,
-            };
+        if (!token) {
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            return AUTH_ERROR_RESPONSE;
         }
 
         log.debug(`Executing get-all-activities with input: ${JSON.stringify(input)}`);
@@ -134,16 +138,10 @@ export const getAllActivities = {
 
             // Validate date inputs
             if (before && isNaN(before)) {
-                return {
-                    content: [{ type: "text" as const, text: "❌ Invalid endDate format. Please use ISO date format (e.g., '2024-12-31')." }],
-                    isError: true
-                };
+                return generateErrorResponse("❌ Invalid endDate format. Please use ISO date format (e.g., '2024-12-31').");
             }
             if (after && isNaN(after)) {
-                return {
-                    content: [{ type: "text" as const, text: "❌ Invalid startDate format. Please use ISO date format (e.g., '2024-01-01')." }],
-                    isError: true
-                };
+                return generateErrorResponse("❌ Invalid startDate format. Please use ISO date format (e.g., '2024-01-01').");
             }
 
             log.error(`Fetching activities with filters:`);
@@ -235,12 +233,7 @@ export const getAllActivities = {
             log.error(`  API calls made: ${stats.apiCalls}`);
 
             if (resultsToReturn.length === 0 || stats.totalMatching === 0 || stats.returned === 0) {
-                return {
-                    content: [{
-                        type: "text" as const,
-                        text: `No activities found matching your criteria.\n\nStatistics:\n- Fetched ${stats.totalFetched} activities\n- ${stats.totalMatching} matched filters\n- Used ${stats.apiCalls} API calls`
-                    }]
-                };
+                return generateSuccessResponse(`No activities found matching your criteria.\n\nStatistics:\n- Fetched ${stats.totalFetched} activities\n- ${stats.totalMatching} matched filters\n- Used ${stats.apiCalls} API calls`);
             }
 
             // Format activities for display
@@ -259,9 +252,7 @@ export const getAllActivities = {
 
             responseText += `**Activities:**\n${summaries.join('\n')}`;
 
-            return {
-                content: [{ type: "text" as const, text: responseText }]
-            };
+            return generateSuccessResponse(responseText);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -269,19 +260,10 @@ export const getAllActivities = {
 
             // Check for rate limiting
             if (errorMessage.includes('429')) {
-                return {
-                    content: [{
-                        type: "text" as const,
-                        text: `⚠️ Rate limit reached. Please wait a few minutes before trying again.\n\nStrava API limits: 100 requests per 15 minutes, 1000 per day.`
-                    }],
-                    isError: true,
-                };
+                return generateErrorResponse(`⚠️ Rate limit reached. Please wait a few minutes before trying again.\n\nStrava API limits: 100 requests per 15 minutes, 1000 per day.`);
             }
 
-            return {
-                content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
-                isError: true,
-            };
+            return generateErrorResponse(`❌ API Error: ${errorMessage}`);
         }
     }
-};
+}

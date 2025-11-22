@@ -2,10 +2,12 @@ import { z } from "zod";
 import { getRecentActivities as fetchActivities } from '../../client/stravaClient.js';
 import { fileURLToPath } from "url";
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
-// Reverted SDK type imports
 
 const GetRecentActivitiesInputSchema = z.object({
   strava_athlete_id: z.string()
@@ -15,22 +17,22 @@ const GetRecentActivitiesInputSchema = z.object({
 
 type GetRecentActivitiesInput = z.infer<typeof GetRecentActivitiesInputSchema>;
 
-// Export the tool definition directly
-export const getRecentActivities = {
-  name: "get-recent-activities",
-  description: "Fetches the most recent activities for the authenticated athlete.",
-  inputSchema: GetRecentActivitiesInputSchema,
-  // Ensure the return type matches the expected structure, relying on inference
-  execute: async ({ strava_athlete_id, perPage }: GetRecentActivitiesInput) => {
-    const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+  return {
+    name: "get-recent-activities",
+    description: "Fetches the most recent activities for the authenticated athlete.",
+    inputSchema: GetRecentActivitiesInputSchema,
+    execute: makeExecuteFn(stravaAuthRepository)
+  }
+}
 
-    if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-      log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-      // Use literal type for content item
-      return {
-        content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-        isError: true,
-      };
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+  return async ({ strava_athlete_id, perPage }: GetRecentActivitiesInput) => {
+    const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
+
+    if (!token) {
+      log.error("Missing or placeholder STRAVA_ACCESS_TOKEN");
+      return AUTH_ERROR_RESPONSE;
     }
 
     try {
@@ -39,33 +41,22 @@ export const getRecentActivities = {
       log.info(`Successfully fetched ${activities?.length ?? 0} activities.`);
 
       if (!activities || activities.length === 0) {
-        return {
-          content: [{ type: "text" as const, text: " MNo recent activities found." }]
-        };
+        return generateErrorResponse("No recent activities found.");
       }
 
       // Map to content items with literal type
       const contentItems = activities.map(activity => {
         const dateStr = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
         const distanceStr = activity.distance ? `${activity.distance}m` : 'N/A';
-        // Ensure each item conforms to { type: "text", text: string }
-        const item: { type: "text", text: string } = {
-          type: "text" as const,
-          text: `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr}`
-        };
-        return item;
+        return `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr}`;
       });
 
-      // Return the basic McpResponse structure
-      return { content: contentItems };
+      return generateSuccessResponse(contentItems.join("\n"));
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       log.error("Error in get-recent-activities tool:", errorMessage);
-      return {
-        content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
-        isError: true,
-      };
+      return generateErrorResponse(`❌ API Error: ${errorMessage}`);
     }
   }
-};
+}

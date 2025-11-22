@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { getAuthenticatedAthlete } from '../../client/stravaClient.js';
-
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../utils/logger.js'
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -14,20 +16,22 @@ const GetAthleteProfileInputSchema = z.object({
 
 type GetAthleteProfileInput = z.infer<typeof GetAthleteProfileInputSchema>;
 
-// Export the tool definition directly
-export const getAthleteProfile = {
-  name: "get-athlete-profile",
-  description: "Fetches the profile information for the authenticated athlete, including their unique numeric ID needed for other tools like get-athlete-stats.",
-  inputSchema: GetAthleteProfileInputSchema,
-  execute: async ({ strava_athlete_id }: GetAthleteProfileInput) => { // No input parameters needed
-    const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+  return {
+    name: "get-athlete-profile",
+    description: "Fetches the profile information for the authenticated athlete, including their unique numeric ID needed for other tools like get-athlete-stats.",
+    inputSchema: GetAthleteProfileInputSchema,
+    execute: makeExecuteFn(stravaAuthRepository)
+  }
+}
 
-    if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-      log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-      return {
-        content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-        isError: true,
-      };
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+  return async ({ strava_athlete_id }: GetAthleteProfileInput) => {
+    const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
+
+    if (!token) {
+      log.error("Missing or placeholder STRAVA_ACCESS_TOKEN");
+      return AUTH_ERROR_RESPONSE;
     }
 
     try {
@@ -48,30 +52,12 @@ export const getAthleteProfile = {
         `   - Last Updated: ${athlete.updated_at ? new Date(athlete.updated_at).toLocaleDateString() : 'N/A'}`,
       ];
 
-      // Ensure return object matches expected structure
-      const response = {
-        content: [{ type: "text" as const, text: profileParts.join("\n") }]
-      };
-      return response;
+      return generateSuccessResponse(profileParts.join("\n"));
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       log.error("Error in get-athlete-profile tool:", errorMessage);
-      return {
-        content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
-        isError: true,
-      };
+      return generateErrorResponse(`❌ API Error: ${errorMessage}`);
     }
   }
-};
-
-// Removed old registration function
-/*
-export function registerGetAthleteProfileTool(server: McpServer) {
-  server.tool(
-    getAthleteProfile.name,
-    getAthleteProfile.description,
-    getAthleteProfile.execute // No input schema
-  );
 }
-*/ 

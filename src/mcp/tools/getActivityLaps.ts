@@ -3,6 +3,9 @@ import { fileURLToPath } from "url";
 import { getActivityLaps as getActivityLapsClient } from '../../client/stravaClient.js';
 import { formatDuration } from '../../utils/formatters.js'; // Import helper
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -47,19 +50,22 @@ const inputSchema = z.object({
 
 type GetActivityLapsInput = z.infer<typeof inputSchema>;
 
-export const getActivityLapsTool = {
-    name,
-    description,
-    inputSchema,
-    execute: async ({ strava_athlete_id, id }: GetActivityLapsInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name,
+        description,
+        inputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, id }: GetActivityLapsInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -67,9 +73,7 @@ export const getActivityLapsTool = {
             const laps = await getActivityLapsClient(token, id);
 
             if (!laps || laps.length === 0) {
-                return {
-                    content: [{ type: "text" as const, text: `✅ No laps found for activity ID: ${id}` }]
-                };
+                return generateSuccessResponse(`✅ No laps found for activity ID: ${id}`);
             }
 
             // Generate human-readable summary
@@ -108,10 +112,7 @@ export const getActivityLapsTool = {
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Activity with ID ${id} not found.`
                 : `An unexpected error occurred while fetching laps for activity ${id}. Details: ${errorMessage}`;
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-}; 
+}

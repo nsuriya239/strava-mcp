@@ -5,6 +5,9 @@ import { StravaAthleteZonesType } from '../../schema/index.js';
 
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -67,19 +70,22 @@ function formatAthleteZones(zonesData: StravaAthleteZonesType): string {
     return responseText;
 }
 
-export const getAthleteZonesTool = {
-    name,
-    description: description + "\n\nOutput includes both a formatted summary and the raw JSON data.",
-    inputSchema,
-    execute: async ({ strava_athlete_id }: GetAthleteZonesInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name,
+        description: description + "\n\nOutput includes both a formatted summary and the raw JSON data.",
+        inputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id }: GetAthleteZonesInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -115,10 +121,7 @@ export const getAthleteZonesTool = {
                 userFriendlyMessage = `An unexpected error occurred while fetching athlete zones. Details: ${errorMessage}`;
             }
 
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-}; 
+}

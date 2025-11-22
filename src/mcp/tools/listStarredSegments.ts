@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { fileURLToPath } from "url";
-import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from '../../client/stravaClient.js'; // Renamed import
+import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from '../../client/stravaClient.js';
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -13,72 +16,57 @@ const ListStarredSegmentsInputSchema = z.object({
 
 type ListStarredSegmentsInput = z.infer<typeof ListStarredSegmentsInputSchema>;
 
-// Export the tool definition directly
-export const listStarredSegments = {
-    name: "list-starred-segments",
-    description: "Lists the segments starred by the authenticated athlete.",
-    inputSchema: ListStarredSegmentsInputSchema,
-    execute: async ({ strava_athlete_id }: ListStarredSegmentsInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "list-starred-segments",
+        description: "Lists the segments starred by the authenticated athlete.",
+        inputSchema: ListStarredSegmentsInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
 
-        if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-            return {
-                content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-                isError: true,
-            };
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id }: ListStarredSegmentsInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
+
+        if (!token) {
+            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN");
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
-            log.error("Fetching starred segments...");
-            // Need athlete measurement preference for formatting distance
+            log.info("Fetching starred segments...");
             const athlete = await getAuthenticatedAthlete(token);
-            // Use renamed import
             const segments = await fetchSegments(token);
-            log.error(`Successfully fetched ${segments?.length ?? 0} starred segments.`);
+            log.info(`Successfully fetched ${segments?.length ?? 0} starred segments.`);
 
             if (!segments || segments.length === 0) {
-                return { content: [{ type: "text" as const, text: " MNo starred segments found." }] };
+                return generateErrorResponse("No starred segments found.");
             }
 
             const distanceFactor = athlete.measurement_preference === 'feet' ? 0.000621371 : 0.001;
             const distanceUnit = athlete.measurement_preference === 'feet' ? 'mi' : 'km';
+            const elevationFactor = athlete.measurement_preference === 'feet' ? 3.28084 : 1;
+            const elevationUnit = athlete.measurement_preference === 'feet' ? 'ft' : 'm';
 
-            // Format the segments into a text response
-            const segmentText = segments.map(segment => {
-                const location = [segment.city, segment.state, segment.country].filter(Boolean).join(", ") || 'N/A';
+            const segmentSummaries = segments.map(segment => {
                 const distance = (segment.distance * distanceFactor).toFixed(2);
-                return `
-⭐ **${segment.name}** (ID: ${segment.id})
-   - Activity Type: ${segment.activity_type}
+                let elevDiff = 'N/A';
+                if (segment.elevation_high != null && segment.elevation_low != null) {
+                    elevDiff = ((segment.elevation_high - segment.elevation_low) * elevationFactor).toFixed(0);
+                }
+                return `🗺️ **${segment.name}** (ID: ${segment.id})
    - Distance: ${distance} ${distanceUnit}
    - Avg Grade: ${segment.average_grade}%
-   - Location: ${location}
-   - Private: ${segment.private ? 'Yes' : 'No'}
-          `.trim();
-            }).join("\n---\n");
+   - Elev Difference: ${elevDiff} ${elevationUnit}
+   - Activity Type: ${segment.activity_type}`;
+            });
 
-            const responseText = `**Your Starred Segments:**\n\n${segmentText}`;
-
-            return { content: [{ type: "text" as const, text: responseText }] };
+            return generateSuccessResponse(`**Starred Segments:**\n\n${segmentSummaries.join("\n---\n")}`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             log.error("Error in list-starred-segments tool:", errorMessage);
-            return {
-                content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
-                isError: true,
-            };
+            return generateErrorResponse(`❌ API Error: ${errorMessage}`);
         }
     }
-};
-
-// Remove the old registration function
-/*
-export function registerListStarredSegmentsTool(server: McpServer) {
-    server.tool(
-        listStarredSegments.name,
-        listStarredSegments.description,
-        listStarredSegments.execute // No input schema
-    );
 }
-*/ 

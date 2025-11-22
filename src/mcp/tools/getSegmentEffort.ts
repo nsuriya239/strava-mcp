@@ -8,6 +8,9 @@ import { formatDistance, formatDuration } from '../../utils/formatters.js';
 
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -51,20 +54,22 @@ function formatSegmentEffort(effort: StravaDetailedSegmentEffortType): string {
     return details;
 }
 
-// Tool definition
-export const getSegmentEffortTool = {
-    name: "get-segment-effort",
-    description: "Fetches detailed information about a specific segment effort using its ID.",
-    inputSchema: GetSegmentEffortInputSchema,
-    execute: async ({ strava_athlete_id, effortId }: GetSegmentEffortInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "get-segment-effort",
+        description: "Fetches detailed information about a specific segment effort using its ID.",
+        inputSchema: GetSegmentEffortInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, effortId }: GetSegmentEffortInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token) {
             log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
-            return {
-                content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
-                isError: true
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -74,7 +79,7 @@ export const getSegmentEffortTool = {
             const effortDetailsText = formatSegmentEffort(effort); // Use metric formatter
 
             log.info(`Successfully fetched details for effort: ${effort.name}`);
-            return { content: [{ type: "text" as const, text: effortDetailsText }] };
+            return generateSuccessResponse(effortDetailsText);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log.error(`Error fetching segment effort ${effortId}: ${errorMessage}`);
@@ -88,22 +93,7 @@ export const getSegmentEffortTool = {
                 userFriendlyMessage = `An unexpected error occurred while fetching segment effort ${effortId}. Details: ${errorMessage}`;
             }
 
-            return {
-                content: [{ type: "text" as const, text: `❌ ${userFriendlyMessage}` }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ ${userFriendlyMessage}`);
         }
     }
-};
-
-// Removed old registration function
-/*
-export function registerGetSegmentEffortTool(server: McpServer) {
-    server.tool(
-        getSegmentEffort.name,
-        getSegmentEffort.description,
-        getSegmentEffort.inputSchema.shape,
-        getSegmentEffort.execute
-    );
 }
-*/ 

@@ -6,6 +6,9 @@ import {
 } from '../../client/stravaClient.js';
 import { StravaExplorerResponseType } from '../../schema/index.js';
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -27,26 +30,27 @@ const ExploreSegmentsInputSchema = z.object({
 
 type ExploreSegmentsInput = z.infer<typeof ExploreSegmentsInputSchema>;
 
-// Export the tool definition directly
-export const exploreSegments = {
-    name: "explore-segments",
-    description: "Searches for popular segments within a given geographical area.",
-    inputSchema: ExploreSegmentsInputSchema,
-    execute: async ({ strava_athlete_id, bounds, activityType, minCat, maxCat }: ExploreSegmentsInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "explore-segments",
+        description: "Searches for popular segments within a given geographical area.",
+        inputSchema: ExploreSegmentsInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, bounds, activityType, minCat, maxCat }: ExploreSegmentsInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
 
         if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
             log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-            return {
-                content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-                isError: true,
-            };
+            return AUTH_ERROR_RESPONSE;
         }
         if ((minCat !== undefined || maxCat !== undefined) && activityType !== 'riding') {
-            return {
-                content: [{ type: "text" as const, text: "❌ Input Error: Climb category filters (minCat, maxCat) require activityType to be 'riding'." }],
-                isError: true,
-            };
+            return generateErrorResponse("❌ Input Error: Climb category filters (minCat, maxCat) require activityType to be 'riding'.");
         }
 
         try {
@@ -56,7 +60,7 @@ export const exploreSegments = {
             log.error(`Found ${response.segments?.length ?? 0} segments.`);
 
             if (!response.segments || response.segments.length === 0) {
-                return { content: [{ type: "text" as const, text: " MNo segments found in the specified area with the given filters." }] };
+                return generateErrorResponse("No segments found in the specified area with the given filters.");
             }
 
             const distanceFactor = athlete.measurement_preference === 'feet' ? 0.000621371 : 0.001;
@@ -81,17 +85,14 @@ export const exploreSegments = {
 
             const responseText = `**Found Segments:**\n\n${segmentItems.map(item => item.text).join("\n---\n")}`;
 
-            return { content: [{ type: "text" as const, text: responseText }] };
+            return generateSuccessResponse(responseText);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             log.error("Error in explore-segments tool:", errorMessage);
-            return {
-                content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
-                isError: true,
-            };
+            return generateErrorResponse(`❌ API Error: ${errorMessage}`);
         }
     }
-};
+}
 
 // Remove the old registration function
 /*

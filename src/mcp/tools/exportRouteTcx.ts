@@ -4,11 +4,13 @@ import * as path from 'node:path';
 import { fileURLToPath } from "url";
 import { exportRouteTcx as fetchTcxData } from '../../client/stravaClient.js';
 import { createLogger } from '../../utils/logger.js';
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
 
-// Define the input schema for the tool
 // Define the input schema for the tool
 const ExportRouteTcxInputSchema = z.object({
     strava_athlete_id: z.string()
@@ -19,28 +21,26 @@ const ExportRouteTcxInputSchema = z.object({
 // Infer the input type from the schema
 type ExportRouteTcxInput = z.infer<typeof ExportRouteTcxInputSchema>;
 
-// Export the tool definition directly
-export const exportRouteTcx = {
-    name: "export-route-tcx",
-    description: "Exports a specific Strava route in TCX format and saves it to a pre-configured local directory.",
-    inputSchema: ExportRouteTcxInputSchema,
-    execute: async ({ strava_athlete_id, routeId }: ExportRouteTcxInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "export-route-tcx",
+        description: "Exports a specific Strava route in TCX format and saves it to a pre-configured local directory.",
+        inputSchema: ExportRouteTcxInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, routeId }: ExportRouteTcxInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
         if (!token) {
-            // Strict return structure
-            return {
-                content: [{ type: "text" as const, text: "❌ Error: Missing STRAVA_ACCESS_TOKEN in .env file." }],
-                isError: true
-            };
+            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN");
+            return AUTH_ERROR_RESPONSE;
         }
 
         const exportDir = process.env.ROUTE_EXPORT_PATH;
         if (!exportDir) {
-            // Strict return structure
-            return {
-                content: [{ type: "text" as const, text: "❌ Error: Missing ROUTE_EXPORT_PATH in .env file. Please configure the directory for saving exports." }],
-                isError: true
-            };
+            return generateErrorResponse("❌ Error: Missing ROUTE_EXPORT_PATH in .env file. Please configure the directory for saving exports.");
         }
 
         try {
@@ -52,11 +52,7 @@ export const exportRouteTcx = {
                 // Check if it's a directory and writable (existing logic)
                 const stats = fs.statSync(exportDir);
                 if (!stats.isDirectory()) {
-                    // Strict return structure
-                    return {
-                        content: [{ type: "text" as const, text: `❌ Error: ROUTE_EXPORT_PATH (${exportDir}) is not a valid directory.` }],
-                        isError: true
-                    };
+                    return generateErrorResponse(`❌ Error: ROUTE_EXPORT_PATH (${exportDir}) is not a valid directory.`);
                 }
                 fs.accessSync(exportDir, fs.constants.W_OK);
             }
@@ -66,23 +62,15 @@ export const exportRouteTcx = {
             const fullPath = path.join(exportDir, filename);
             fs.writeFileSync(fullPath, tcxData);
 
-            // Strict return structure
-            return {
-                content: [{ type: "text" as const, text: `✅ Route ${routeId} exported successfully as TCX to: ${fullPath}` }],
-            };
+            return generateSuccessResponse(`✅ Route ${routeId} exported successfully as TCX to: ${fullPath}`);
 
         } catch (err: any) {
-            // Handle potential errors during directory creation/check or file writing
             log.error(`Error in export-route-tcx tool for route ${routeId}:`, err);
             let userMessage = `❌ Error exporting route ${routeId} as TCX: ${err.message}`;
             if (err.code === 'EACCES') {
                 userMessage = `❌ Error: No write permission for ROUTE_EXPORT_PATH directory (${exportDir}).`;
             }
-            // Strict return structure
-            return {
-                content: [{ type: "text" as const, text: userMessage }],
-                isError: true
-            };
+            return generateErrorResponse(userMessage);
         }
-    },
-}; 
+    }
+}

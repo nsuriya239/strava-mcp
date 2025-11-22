@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { generateErrorResponse } from "../../utils/responseGenerator.js";
 
 // Define types for workout segments
 interface WorkoutSegment {
@@ -130,29 +132,44 @@ ${workoutSegments}
 </workout_file>`;
 }
 
-// Tool definition
-export const formatWorkoutFile = {
-    name: "format-workout-file",
-    description: "Formats a workout plan into a structured file format (currently supports Zwift .zwo)",
-    inputSchema: z.object({
-        strava_athlete_id: z.string()
-            .describe("The Strava athlete ID for authentication"),
-        workoutText: z.string().describe("The workout plan text in the specified format"),
-        format: z.enum(['zwo']).default('zwo').describe("Output format (currently only 'zwo' is supported)")
-    }),
-    execute: async ({ strava_athlete_id, workoutText, format }: { strava_athlete_id: string; workoutText: string; format: 'zwo' }) => {
+const FormatWorkoutFileInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
+    workoutText: z.string().describe("The workout plan text in the specified format"),
+    format: z.enum(['zwo']).default('zwo').describe("Output format (currently only 'zwo' is supported)")
+});
+
+type FormatWorkoutFileInput = z.infer<typeof FormatWorkoutFileInputSchema>;
+
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "format-workout-file",
+        description: "Formats a workout plan into a structured file format (currently supports Zwift .zwo)",
+        inputSchema: FormatWorkoutFileInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
+
+const makeExecuteFn = (_stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id: _strava_athlete_id, workoutText, format }: FormatWorkoutFileInput) => {
+        // Note: This tool doesn't strictly need the token, but we keep the pattern consistent
+        // and could potentially use it to fetch athlete zones in the future.
+        // For now, we just check if the user exists/is authenticated if we wanted to enforce it,
+        // but since it's a formatting tool, we might skip strict token check or just pass it through.
+        // However, to be consistent with other tools, we can fetch the token or just proceed.
+        // Given the prompt "Update all the mcp tools to the same implementation", I will include the repository pattern.
+
+        // Optional: Verify user exists if needed, but for pure formatting it might be overkill.
+        // But let's stick to the pattern.
+        // const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
+        // if (!token) return AUTH_ERROR_RESPONSE; 
+
         try {
             // Parse the workout text into structured segments
             const segments = parseWorkoutText(workoutText);
 
             if (segments.length === 0) {
-                return {
-                    content: [{
-                        type: "text",
-                        text: "❌ No valid workout segments found in the input text. Please ensure the format matches the expected pattern."
-                    }],
-                    isError: true
-                };
+                return generateErrorResponse("❌ No valid workout segments found in the input text. Please ensure the format matches the expected pattern.");
             }
 
             // Generate the appropriate format
@@ -161,8 +178,7 @@ export const formatWorkoutFile = {
                 return {
                     content: [{
                         type: "text",
-                        text: zwoContent,
-                        mimeType: "application/xml"  // Help clients understand this is XML content
+                        text: zwoContent
                     }]
                 };
             }
@@ -171,13 +187,7 @@ export const formatWorkoutFile = {
             throw new Error(`Unsupported format: ${format}`);
 
         } catch (error) {
-            return {
-                content: [{
-                    type: "text",
-                    text: `❌ Failed to format workout: ${(error as Error).message}`
-                }],
-                isError: true
-            };
+            return generateErrorResponse(`❌ Failed to format workout: ${(error as Error).message}`);
         }
     }
-}; 
+}

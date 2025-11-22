@@ -4,6 +4,7 @@ import { setupRoutes } from './routes/index.js';
 import { Config } from './utils/config.js';
 
 
+
 export const setupAppServer = (server: McpServer, config: Config) => {
   const app = express();
   app.use(express.json());

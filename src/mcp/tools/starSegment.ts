@@ -3,6 +3,9 @@ import { starSegment as updateStarStatus } from '../../client/stravaClient.js'; 
 
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
+import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
+import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
+import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -16,20 +19,22 @@ const StarSegmentInputSchema = z.object({
 
 type StarSegmentInput = z.infer<typeof StarSegmentInputSchema>;
 
-// Export the tool definition directly
-export const starSegment = {
-    name: "star-segment",
-    description: "Stars or unstars a specific segment for the authenticated athlete.",
-    inputSchema: StarSegmentInputSchema,
-    execute: async ({ strava_athlete_id, segmentId, starred }: StarSegmentInput) => {
-        const token = process.env.STRAVA_ACCESS_TOKEN;
+export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
+    return {
+        name: "star-segment",
+        description: "Stars or unstars a specific segment for the authenticated athlete.",
+        inputSchema: StarSegmentInputSchema,
+        execute: makeExecuteFn(stravaAuthRepository)
+    }
+}
 
-        if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
+const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
+    return async ({ strava_athlete_id, segmentId, starred }: StarSegmentInput) => {
+        const token = await stravaAuthRepository.fetchAccessToken(strava_athlete_id);
+
+        if (!token) {
             log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
-            return {
-                content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
-                isError: true,
-            };
+            return AUTH_ERROR_RESPONSE;
         }
 
         try {
@@ -41,28 +46,13 @@ export const starSegment = {
             const successMessage = `Successfully ${action} segment: "${updatedSegment.name}" (ID: ${updatedSegment.id}). Its starred status is now: ${updatedSegment.starred}.`;
             log.info(successMessage);
 
-            return { content: [{ type: "text" as const, text: successMessage }] };
+            return generateSuccessResponse(successMessage);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             const action = starred ? 'star' : 'unstar';
             log.error(`Error attempting to ${action} segment ID ${segmentId}:`, errorMessage);
-            return {
-                content: [{ type: "text" as const, text: `❌ API Error: Failed to ${action} segment ${segmentId}. ${errorMessage}` }],
-                isError: true,
-            };
+            return generateErrorResponse(`❌ API Error: Failed to ${action} segment ${segmentId}. ${errorMessage}`);
         }
     }
-};
-
-// Removed old registration function
-/*
-export function registerStarSegmentTool(server: McpServer) {
-    server.tool(
-        starSegment.name,
-        starSegment.description,
-        starSegment.inputSchema.shape,
-        starSegment.execute
-    );
 }
-*/ 
