@@ -24,7 +24,7 @@ async function startServer() {
     await initializeDbClient(config);
     const cacheClient = initializeCacheClient();
     const repositories = initializeRepositories(cacheClient);
-    registerTools(mcpServer, repositories);
+    registerTools(mcpServer, repositories, config);
     const app = setupAppServer(mcpServer, config, repositories);
     log.info("Starting Strava MCP App Server...");
     app.listen(config.PORT, () => {

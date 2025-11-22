@@ -36,7 +36,7 @@ const prepareConfigObject = () => {
   const config = {
     stravaClientId: process.env.STRAVA_CLIENT_ID || "",
     stravaClientSecret: process.env.STRAVA_CLIENT_SECRET || "",
-    stravaRedirectUri: process.env.STRAVA_REDIRECT_URI ,
+    stravaRedirectUri: process.env.STRAVA_REDIRECT_URI,
     dbConnectionString: process.env.DB_URL,
     dbPass: process.env.DB_PASS,
     dbHost: process.env.DB_HOST,
@@ -63,10 +63,10 @@ export /**
  * @param accessToken - The new access token
  * @param refreshToken - The new refresh token
  */
-async function updateTokensInEnvFile(
-  accessToken: string,
-  refreshToken: string
-): Promise<void> {
+  async function updateTokensInEnvFile(
+    accessToken: string,
+    refreshToken: string
+  ): Promise<void> {
   try {
     let envContent = await fs.readFile(envPath, "utf-8");
     const lines = envContent.split("\n");
@@ -97,8 +97,7 @@ async function updateTokensInEnvFile(
     log.info("Tokens successfully refreshed and updated in .env file.");
   } catch (error) {
     log.error(
-      `Failed to update tokens in .env file: ${
-        error instanceof Error ? error.message : String(error)
+      `Failed to update tokens in .env file: ${error instanceof Error ? error.message : String(error)
       }`
     );
     // Continue execution even if file update fails

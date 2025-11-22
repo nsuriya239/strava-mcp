@@ -19,8 +19,10 @@ import { makeTool as makeGetActivityLapsTool } from './getActivityLaps.js';
 import { makeTool as makeGetAthleteZonesTool } from './getAthleteZones.js';
 import { makeTool as makeGetAllActivitiesTool } from './getAllActivities.js';
 import { makeTool as makeFormatWorkoutFileTool } from './formatWorkoutFile.js';
+import { makeTool as makeStravaAuthTool } from './stravaAuth.js';
+import { Config } from "../../utils/config.js";
 
-export const makeTools = (stravaAuthRepository: StravaAuthRepository) => {
+export const makeTools = (stravaAuthRepository: StravaAuthRepository, config: Config) => {
     return [
         makeGetAthleteProfileTool(stravaAuthRepository),
         makeGetAthleteStatsTool(stravaAuthRepository),
@@ -41,6 +43,7 @@ export const makeTools = (stravaAuthRepository: StravaAuthRepository) => {
         makeGetActivityLapsTool(stravaAuthRepository),
         makeGetAthleteZonesTool(stravaAuthRepository),
         makeGetAllActivitiesTool(stravaAuthRepository),
-        makeFormatWorkoutFileTool(stravaAuthRepository)
+        makeFormatWorkoutFileTool(stravaAuthRepository),
+        makeStravaAuthTool(config)
     ]
 }
