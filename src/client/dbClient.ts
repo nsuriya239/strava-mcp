@@ -27,6 +27,8 @@ export const initializeDbClient = async (config: Config) => {
   };
   db.sequelize.sync({ force: true }).then(() => {
     log.info(`Database & tables created!`);
+  }).catch((err) => {
+    log.error(`DB Sync error: ${err}`);
   });
   db.sequelize
     .authenticate()

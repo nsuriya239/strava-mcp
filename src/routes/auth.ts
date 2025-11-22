@@ -4,8 +4,6 @@ import { createLogger } from "../utils/logger.js";
 import { Config } from "../utils/config.js";
 import { StravaAuthRepository } from "../repository/strava_auth_repository.js";
 
-const stravaAuthRepository = new StravaAuthRepository();
-
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
 
@@ -34,7 +32,7 @@ export const authRoute = (config: Config) => {
 /**
  * OAuth callback handler - exchanges code for access token
  */
-export const authCallbackRoute = (config: Config) => {
+export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAuthRepository) => {
   return async (req: Request, res: Response) => {
     const { code, error, error_description } = req.query;
 

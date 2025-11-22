@@ -19,13 +19,12 @@ const mcpServer = new McpServer({
 async function startServer() {
   try {
     log.info("Initializing Strava MCP Server...");
-    log.info("Registering MCP Tools ...");
     const config = loadConfigFromEnv();
     await initializeDbClient(config);
     const repositories = initializeRepositories();
     registerTools(mcpServer, repositories);
+    const app = setupAppServer(mcpServer, config, repositories);
     log.info("Starting Strava MCP App Server...");
-    const app = setupAppServer(mcpServer, config);
     app.listen(config.PORT, () => {
       log.info(`Strava MCP Server running on http://localhost:${config.PORT}/mcp`);
     }).on('error', error => {
