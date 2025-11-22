@@ -27,5 +27,3 @@ yarn-error.log*
 cursor_rules.json 
 .mcpregistry_registry_token
 .mcpregistry_github_token
-
-package-lock.json
