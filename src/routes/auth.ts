@@ -18,11 +18,12 @@ export const authRoute = (config: Config) => {
       return res.status(500).json({ error: "OAuth configuration error" });
     }
 
+    const callbackUrl = `${config.stravaRedirectUri}/callback`;
     const scopes =
       "profile:read_all,activity:read_all,activity:read,profile:write";
     const authUrl = `https://www.strava.com/oauth/authorize?client_id=${config.stravaClientId
       }&response_type=code&redirect_uri=${encodeURIComponent(
-        config.stravaRedirectUri
+        callbackUrl
       )}&approval_prompt=force&scope=${scopes}`;
 
     res.redirect(authUrl);
