@@ -27,15 +27,21 @@ export class StravaAuthRepository {
     }
 
     async upsert(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null> {
-        console.log(`StravaAuthRepository.upsert called for userId: ${userId}`);
         try {
-            const authInfo = await StravaAccessInfo.findByPk(userId);
-            if (!authInfo) {
-                console.log("User not found, creating new record");
-                return this.create(data as StravaAccessInfoCreateType);
+            const existing = await StravaAccessInfo.findByPk(userId);
+            if (existing) {
+                // Update existing record with provided fields
+                await existing.update(data);
+                return existing.toJSON() as StravaAccessInfoType;
             }
-            console.log("User found, updating record");
-            return this.update(userId, data);
+            // Create new record ensuring required fields are present
+            const newRecord = await StravaAccessInfo.create({
+                userId,
+                accessToken: data.accessToken as string,
+                refreshToken: data.refreshToken as string,
+                expiresAt: data.expiresAt as Date,
+            });
+            return newRecord.toJSON() as StravaAccessInfoType;
         } catch (error) {
             console.error("Error in StravaAuthRepository.upsert:", error);
             throw error;
