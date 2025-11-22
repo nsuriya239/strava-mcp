@@ -6,6 +6,7 @@ import { createLogger } from "./utils/logger.js";
 import { fileURLToPath } from "url";
 import { initializeDbClient } from "./client/dbClient.js";
 import { initializeRepositories } from "./repository/index.js";
+import { initializeCacheClient } from "./client/cacheClient.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -21,6 +22,7 @@ async function startServer() {
     log.info("Initializing Strava MCP Server...");
     const config = loadConfigFromEnv();
     await initializeDbClient(config);
+    initializeCacheClient();
     const repositories = initializeRepositories();
     registerTools(mcpServer, repositories);
     const app = setupAppServer(mcpServer, config, repositories);
