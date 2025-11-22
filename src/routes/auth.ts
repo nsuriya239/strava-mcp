@@ -98,13 +98,23 @@ export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAu
         expiresAt: new Date((tokenData.expires_at || 0) * 1000),
       });
 
-      return res.json({
-        status: "success",
-        message: "Token exchange successful, Please copy and paste the below athlete_id in the agents web interface, so the agent can use it to get your strava data",
-        data: {
-          athlete_id: tokenData.athlete?.id,
-        },
-      });
+      return res.send(`
+        <html>
+          <head>
+            <style>
+              body {font-family: Arial, sans-serif; padding: 20px;}
+              .message {font-size: 1.2em; margin-bottom: 10px;}
+              .athlete-id {font-weight: bold; font-size: 1.5em; color: #2c3e50; background: #ecf0f1; padding: 10px; display: inline-block;}
+            </style>
+          </head>
+          <body>
+            <h2>Token exchange successful</h2>
+            <p class="message">Please copy and paste the below athlete_id in the agents web interface, so the agent can use it to get your Strava data:</p>
+            <div class="athlete-id">${tokenData.athlete?.id}</div>
+          </body>
+        </html>
+      `);
+
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
