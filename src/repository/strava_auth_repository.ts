@@ -8,8 +8,14 @@ export class StravaAuthRepository {
     }
 
     async create(data: StravaAccessInfoCreateType): Promise<StravaAccessInfoType | null> {
-        const authInfo = await StravaAccessInfo.create(data);
-        return authInfo.toJSON() as StravaAccessInfoType
+        console.log("StravaAuthRepository.create called with:", JSON.stringify(data));
+        try {
+            const authInfo = await StravaAccessInfo.create(data);
+            return authInfo.toJSON() as StravaAccessInfoType
+        } catch (error) {
+            console.error("Error in StravaAuthRepository.create:", error);
+            throw error;
+        }
     }
 
     async update(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null> {
@@ -21,10 +27,19 @@ export class StravaAuthRepository {
     }
 
     async upsert(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null> {
-        const authInfo = await StravaAccessInfo.findByPk(userId);
-        if (!authInfo)
-            return this.create(data as StravaAccessInfoCreateType);
-        return this.update(userId, data);
+        console.log(`StravaAuthRepository.upsert called for userId: ${userId}`);
+        try {
+            const authInfo = await StravaAccessInfo.findByPk(userId);
+            if (!authInfo) {
+                console.log("User not found, creating new record");
+                return this.create(data as StravaAccessInfoCreateType);
+            }
+            console.log("User found, updating record");
+            return this.update(userId, data);
+        } catch (error) {
+            console.error("Error in StravaAuthRepository.upsert:", error);
+            throw error;
+        }
     }
 
     async fetchAccessToken(userId: string): Promise<string | null> {

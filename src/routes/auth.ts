@@ -108,7 +108,7 @@ export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAu
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      log.error(`OAuth callback error: ${errorMessage} ${error}`);
+      log.error(`OAuth callback error: ${errorMessage} ${error} `);
       res.status(500).json({
         error: "Internal server error",
         message: errorMessage,

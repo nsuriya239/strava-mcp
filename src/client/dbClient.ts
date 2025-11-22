@@ -25,11 +25,12 @@ export const initializeDbClient = async (config: Config) => {
       dbClient.close();
     },
   };
-  db.sequelize.sync({ force: true }).then(() => {
+  try {
+    await db.sequelize.sync({ force: true });
     log.info(`Database & tables created!`);
-  }).catch((err) => {
+  } catch (err) {
     log.error(`DB Sync error: ${err}`);
-  });
+  }
   db.sequelize
     .authenticate()
     .then(() => {
