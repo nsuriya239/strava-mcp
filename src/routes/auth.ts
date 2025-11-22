@@ -105,10 +105,11 @@ export const authCallbackRoute = (config: Config, stravaAuthRepository: StravaAu
               body {font-family: Arial, sans-serif; padding: 20px; display: flex; align-content: center;justify-content: space-evenly;align-items: center;flex-direction: column;}
               .message {font-size: 1.2em; margin-bottom: 10px;}
               .athlete-id {font-weight: bold;font-size: 1.5em;color: #f5f5f5;background: #3828b1;padding: 10px;display: inline-block;border-radius: 16px}
+              .container {display: flex;align-content: center;flex-direction: column;align-items: center;}
             </style>
           </head>
           <body>
-          <div>
+          <div class="container">
             <h2>Token exchange successful</h2>
             <p class="message">Please copy and paste the below athlete_id in the agents web interface, so the agent can use it to get your Strava data:</p>
             <div class="athlete-id">${tokenData.athlete?.id}</div>
