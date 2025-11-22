@@ -7,14 +7,14 @@ export class StravaAuthRepository {
         return StravaAccessInfo.findByPk(userId);
     }
 
-    async create(data: StravaAccessInfoCreateType): Promise<StravaAccessInfoType | null>{
+    async create(data: StravaAccessInfoCreateType): Promise<StravaAccessInfoType | null> {
         const authInfo = await StravaAccessInfo.create(data);
         return authInfo.toJSON() as StravaAccessInfoType
     }
 
-    async update(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null>{
+    async update(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null> {
         const authInfo = await StravaAccessInfo.findByPk(userId);
-        if(!authInfo)
+        if (!authInfo)
             return null
         await authInfo.update(data);
         return authInfo.toJSON() as StravaAccessInfoType
@@ -22,9 +22,16 @@ export class StravaAuthRepository {
 
     async upsert(userId: string, data: Partial<StravaAccessInfoType>): Promise<StravaAccessInfoType | null> {
         const authInfo = await StravaAccessInfo.findByPk(userId);
-        if(!authInfo)
+        if (!authInfo)
             return this.create(data as StravaAccessInfoCreateType);
         return this.update(userId, data);
-    } 
+    }
+
+    async fetchAccessToken(userId: string): Promise<string | null> {
+        const authInfo = await StravaAccessInfo.findByPk(userId);
+        if (!authInfo)
+            return null
+        return authInfo.accessToken
+    }
 
 }

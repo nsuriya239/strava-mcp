@@ -13,7 +13,7 @@ const log = createLogger(__filename);
  * Initiate OAuth flow - redirects to Strava authorization
  */
 export const authRoute = (config: Config) => {
-  return (req: Request, res: Response) => {
+  return (_req: Request, res: Response) => {
     log.debug("Starting OAuth flow - redirecting to Strava");
     if (!config.stravaClientId) {
       log.error("Missing STRAVA_CLIENT_ID");

@@ -1,6 +1,5 @@
 import winston from 'winston';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 // Define log levels
 const levels = {
@@ -22,14 +21,6 @@ const colors = {
 
 // Tell winston about our colors
 winston.addColors(colors);
-
-// Define log format
-const format = winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json()
-);
 
 // Define console format with colors
 const consoleFormat = winston.format.combine(

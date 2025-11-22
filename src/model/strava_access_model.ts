@@ -27,10 +27,10 @@ export class StravaAccessInfo extends Model<InferAttributes<StravaAccessInfo>, I
                 allowNull: false,
             }
         },
-        { sequelize: db, tableName: 'strava_access_info' }
+            { sequelize: db, tableName: 'strava_access_info' }
         );
     }
-    static associate(models: any) {
+    static associate(_models: any) {
 
     }
 }

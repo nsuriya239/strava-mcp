@@ -1,6 +1,3 @@
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 // Interface for getAllActivities parameters
 export interface GetAllActivitiesParams {
