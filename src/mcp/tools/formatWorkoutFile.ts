@@ -16,7 +16,7 @@ interface WorkoutSegment {
 function targetToZwiftPower(target: string): number {
     // Convert various formats to percentage of FTP
     const targetLower = target.toLowerCase();
-    
+
     // Handle direct FTP percentages
     const ftpMatch = targetLower.match(/(\d+)%\s*ftp/);
     if (ftpMatch?.[1]) {
@@ -57,10 +57,10 @@ function parseDuration(duration: string): { value: number; unit: 'min' | 'sec' }
     if (!match?.[1] || !match?.[2]) {
         throw new Error(`Invalid duration format: ${duration}`);
     }
-    
+
     const value = parseInt(match[1]);
     const unit = match[2].toLowerCase() as 'min' | 'sec';
-    
+
     return { value, unit };
 }
 
@@ -77,7 +77,7 @@ function parseWorkoutText(text: string): WorkoutSegment[] {
         if (!segmentMatch?.[1] || !segmentMatch?.[2] || !segmentMatch?.[3]) continue;
 
         const [, type, duration, target, extras] = segmentMatch;
-        
+
         const segment: WorkoutSegment = {
             type: type.trim(),
             duration: parseDuration(duration.trim()),
@@ -106,15 +106,15 @@ function parseWorkoutText(text: string): WorkoutSegment[] {
 // Generate ZWO XML content
 function generateZwoContent(segments: WorkoutSegment[]): string {
     const workoutSegments = segments.map(segment => {
-        const durationSeconds = segment.duration.unit === 'min' 
-            ? segment.duration.value * 60 
+        const durationSeconds = segment.duration.unit === 'min'
+            ? segment.duration.value * 60
             : segment.duration.value;
-        
+
         const power = targetToZwiftPower(segment.target);
-        
+
         const cadenceAttr = segment.cadence ? ` Cadence="${segment.cadence}"` : '';
         const showsTarget = segment.target.toLowerCase().includes('ftp') ? ' ShowsPower="1"' : '';
-        
+
         return `        <SteadyState Duration="${durationSeconds}" Power="${power}"${cadenceAttr}${showsTarget}${segment.notes ? ` textEvent="${segment.notes}"` : ''}/>`
     }).join('\n');
 
@@ -135,19 +135,21 @@ export const formatWorkoutFile = {
     name: "format-workout-file",
     description: "Formats a workout plan into a structured file format (currently supports Zwift .zwo)",
     inputSchema: z.object({
+        strava_athlete_id: z.string()
+            .describe("The Strava athlete ID for authentication"),
         workoutText: z.string().describe("The workout plan text in the specified format"),
         format: z.enum(['zwo']).default('zwo').describe("Output format (currently only 'zwo' is supported)")
     }),
-    execute: async ({ workoutText, format }: { workoutText: string; format: 'zwo' }) => {
+    execute: async ({ strava_athlete_id, workoutText, format }: { strava_athlete_id: string; workoutText: string; format: 'zwo' }) => {
         try {
             // Parse the workout text into structured segments
             const segments = parseWorkoutText(workoutText);
-            
+
             if (segments.length === 0) {
                 return {
-                    content: [{ 
-                        type: "text", 
-                        text: "❌ No valid workout segments found in the input text. Please ensure the format matches the expected pattern." 
+                    content: [{
+                        type: "text",
+                        text: "❌ No valid workout segments found in the input text. Please ensure the format matches the expected pattern."
                     }],
                     isError: true
                 };
@@ -157,8 +159,8 @@ export const formatWorkoutFile = {
             if (format === 'zwo') {
                 const zwoContent = generateZwoContent(segments);
                 return {
-                    content: [{ 
-                        type: "text", 
+                    content: [{
+                        type: "text",
                         text: zwoContent,
                         mimeType: "application/xml"  // Help clients understand this is XML content
                     }]
@@ -167,12 +169,12 @@ export const formatWorkoutFile = {
 
             // Should never reach here due to zod validation
             throw new Error(`Unsupported format: ${format}`);
-            
+
         } catch (error) {
             return {
-                content: [{ 
-                    type: "text", 
-                    text: `❌ Failed to format workout: ${(error as Error).message}` 
+                content: [{
+                    type: "text",
+                    text: `❌ Failed to format workout: ${(error as Error).message}`
                 }],
                 isError: true
             };

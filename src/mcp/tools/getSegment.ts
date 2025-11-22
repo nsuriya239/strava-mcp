@@ -3,11 +3,19 @@ import { z } from "zod";
 import {
     getSegmentById as fetchSegmentById,
     // handleApiError, // Removed unused import
-} from '../client/stravaClient.js';
-import { StravaDetailedSegmentType } from '../schema/index.js';
+} from '../../client/stravaClient.js';
+import { StravaDetailedSegmentType } from '../../schema/index.js';
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // Input schema
 const GetSegmentInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     segmentId: z.number().int().positive().describe("The unique identifier of the segment to fetch.")
 });
 type GetSegmentInput = z.infer<typeof GetSegmentInputSchema>;
@@ -50,11 +58,11 @@ export const getSegmentTool = {
     name: "get-segment",
     description: "Fetches detailed information about a specific segment using its ID.",
     inputSchema: GetSegmentInputSchema,
-    execute: async ({ segmentId }: GetSegmentInput) => {
+    execute: async ({ strava_athlete_id, segmentId }: GetSegmentInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -62,16 +70,16 @@ export const getSegmentTool = {
         }
 
         try {
-            console.error(`Fetching details for segment ID: ${segmentId}...`);
+            log.info(`Fetching details for segment ID: ${segmentId}...`);
             // Removed getAuthenticatedAthlete call
             const segment = await fetchSegmentById(token, segmentId);
             const segmentDetailsText = formatSegmentDetails(segment); // Use metric formatter
 
-            console.error(`Successfully fetched details for segment: ${segment.name}`);
+            log.info(`Successfully fetched details for segment: ${segment.name}`);
             return { content: [{ type: "text" as const, text: segmentDetailsText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching segment ${segmentId}: ${errorMessage}`);
+            log.error(`Error fetching segment ${segmentId}: ${errorMessage}`);
             // Removed call to handleApiError
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Segment with ID ${segmentId} not found.`

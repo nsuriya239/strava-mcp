@@ -2,11 +2,19 @@
 import { z } from "zod";
 import {
     getSegmentEffort as fetchSegmentEffort,
-} from '../client/stravaClient.js';
-import { StravaDetailedSegmentEffortType } from '../schema/index.js';
-import { formatDistance, formatDuration } from '../utils/formatters.js';
+} from '../../client/stravaClient.js';
+import { StravaDetailedSegmentEffortType } from '../../schema/index.js';
+import { formatDistance, formatDuration } from '../../utils/formatters.js';
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 const GetSegmentEffortInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     effortId: z.number().int().positive().describe("The unique identifier of the segment effort to fetch.")
 });
 
@@ -48,11 +56,11 @@ export const getSegmentEffortTool = {
     name: "get-segment-effort",
     description: "Fetches detailed information about a specific segment effort using its ID.",
     inputSchema: GetSegmentEffortInputSchema,
-    execute: async ({ effortId }: GetSegmentEffortInput) => {
+    execute: async ({ strava_athlete_id, effortId }: GetSegmentEffortInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -60,16 +68,16 @@ export const getSegmentEffortTool = {
         }
 
         try {
-            console.error(`Fetching details for segment effort ID: ${effortId}...`);
+            log.info(`Fetching details for segment effort ID: ${effortId}...`);
             // Removed getAuthenticatedAthlete call
             const effort = await fetchSegmentEffort(token, effortId);
             const effortDetailsText = formatSegmentEffort(effort); // Use metric formatter
 
-            console.error(`Successfully fetched details for effort: ${effort.name}`);
+            log.info(`Successfully fetched details for effort: ${effort.name}`);
             return { content: [{ type: "text" as const, text: effortDetailsText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching segment effort ${effortId}: ${errorMessage}`);
+            log.error(`Error fetching segment effort ${effortId}: ${errorMessage}`);
 
             let userFriendlyMessage;
             if (errorMessage.startsWith("SUBSCRIPTION_REQUIRED:")) {

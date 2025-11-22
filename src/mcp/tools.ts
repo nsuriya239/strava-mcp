@@ -1,25 +1,25 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 // Import all tool definitions with the correct names
-import { getAthleteProfile } from '../tools/getAthleteProfile.js';
-import { getAthleteStatsTool } from '../tools/getAthleteStats.js';
-import { getActivityDetailsTool } from '../tools/getActivityDetails.js';
-import { getRecentActivities } from '../tools/getRecentActivities.js';
-import { listAthleteClubs } from '../tools/listAthleteClubs.js';
-import { listStarredSegments } from '../tools/listStarredSegments.js';
-import { getSegmentTool } from '../tools/getSegment.js';
-import { exploreSegments } from '../tools/exploreSegments.js';
-import { starSegment } from '../tools/starSegment.js';
-import { getSegmentEffortTool } from '../tools/getSegmentEffort.js';
-import { listSegmentEffortsTool } from '../tools/listSegmentEfforts.js';
-import { listAthleteRoutesTool } from '../tools/listAthleteRoutes.js';
-import { getRouteTool } from '../tools/getRoute.js';
-import { exportRouteGpx } from '../tools/exportRouteGpx.js';
-import { exportRouteTcx } from '../tools/exportRouteTcx.js';
-import { getActivityStreamsTool } from '../tools/getActivityStreams.js';
-import { getActivityLapsTool } from '../tools/getActivityLaps.js';
-import { getAthleteZonesTool } from '../tools/getAthleteZones.js';
-import { getAllActivities } from '../tools/getAllActivities.js';
+import { getAthleteProfile } from './tools/getAthleteProfile.js';
+import { getAthleteStatsTool } from './tools/getAthleteStats.js';
+import { getActivityDetailsTool } from './tools/getActivityDetails.js';
+import { getRecentActivities } from './tools/getRecentActivities.js';
+import { listAthleteClubs } from './tools/listAthleteClubs.js';
+import { listStarredSegments } from './tools/listStarredSegments.js';
+import { getSegmentTool } from './tools/getSegment.js';
+import { exploreSegments } from './tools/exploreSegments.js';
+import { starSegment } from './tools/starSegment.js';
+import { getSegmentEffortTool } from './tools/getSegmentEffort.js';
+import { listSegmentEffortsTool } from './tools/listSegmentEfforts.js';
+import { listAthleteRoutesTool } from './tools/listAthleteRoutes.js';
+import { getRouteTool } from './tools/getRoute.js';
+import { exportRouteGpx } from './tools/exportRouteGpx.js';
+import { exportRouteTcx } from './tools/exportRouteTcx.js';
+import { getActivityStreamsTool } from './tools/getActivityStreams.js';
+import { getActivityLapsTool } from './tools/getActivityLaps.js';
+import { getAthleteZonesTool } from './tools/getAthleteZones.js';
+import { getAllActivities } from './tools/getAllActivities.js';
 
 
 export const registerTools = (server: McpServer) => {
@@ -27,7 +27,7 @@ export const registerTools = (server: McpServer) => {
     server.tool(
         getAthleteProfile.name,
         getAthleteProfile.description,
-        {},
+        getAthleteProfile.inputSchema?.shape ?? {},
         getAthleteProfile.execute
     );
     server.tool(
@@ -51,13 +51,13 @@ export const registerTools = (server: McpServer) => {
     server.tool(
         listAthleteClubs.name,
         listAthleteClubs.description,
-        {},
+        listAthleteClubs.inputSchema?.shape ?? {},
         listAthleteClubs.execute
     );
     server.tool(
         listStarredSegments.name,
         listStarredSegments.description,
-        {},
+        listStarredSegments.inputSchema?.shape ?? {},
         listStarredSegments.execute
     );
     server.tool(

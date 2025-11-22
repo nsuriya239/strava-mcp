@@ -1,16 +1,28 @@
-import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from '../client/stravaClient.js'; // Renamed import
+import { z } from "zod";
+import { fileURLToPath } from "url";
+import { getAuthenticatedAthlete, listStarredSegments as fetchSegments } from '../../client/stravaClient.js'; // Renamed import
+import { createLogger } from '../../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
+const ListStarredSegmentsInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
+});
+
+type ListStarredSegmentsInput = z.infer<typeof ListStarredSegmentsInputSchema>;
 
 // Export the tool definition directly
 export const listStarredSegments = {
     name: "list-starred-segments",
     description: "Lists the segments starred by the authenticated athlete.",
-    // No input schema needed
-    inputSchema: undefined,
-    execute: async () => {
+    inputSchema: ListStarredSegmentsInputSchema,
+    execute: async ({ strava_athlete_id }: ListStarredSegmentsInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-            console.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
+            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
             return {
                 content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
                 isError: true,
@@ -18,12 +30,12 @@ export const listStarredSegments = {
         }
 
         try {
-            console.error("Fetching starred segments...");
+            log.error("Fetching starred segments...");
             // Need athlete measurement preference for formatting distance
             const athlete = await getAuthenticatedAthlete(token);
             // Use renamed import
             const segments = await fetchSegments(token);
-            console.error(`Successfully fetched ${segments?.length ?? 0} starred segments.`);
+            log.error(`Successfully fetched ${segments?.length ?? 0} starred segments.`);
 
             if (!segments || segments.length === 0) {
                 return { content: [{ type: "text" as const, text: " MNo starred segments found." }] };
@@ -51,7 +63,7 @@ export const listStarredSegments = {
             return { content: [{ type: "text" as const, text: responseText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-            console.error("Error in list-starred-segments tool:", errorMessage);
+            log.error("Error in list-starred-segments tool:", errorMessage);
             return {
                 content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
                 isError: true,

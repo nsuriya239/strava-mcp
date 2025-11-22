@@ -1,8 +1,11 @@
 import axios from "axios";
-
+import { createLogger } from '../utils/logger.js';
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // --- Axios Instance & Interceptor --- 
 // Create an Axios instance to apply interceptors globally for this client
@@ -18,21 +21,20 @@ stravaApi.interceptors.request.use(config => {
     // if (typeof authHeaderValue === 'string') {
     //     authHeaderLog = `${authHeaderValue.substring(0, 12)}...[REDACTED]`;
     // }
-    // console.error(`[DEBUG stravaClient] Sending Request: ${config.method?.toUpperCase()} ${config.url}`);
-    // console.error(`[DEBUG stravaClient] Authorization Header: ${authHeaderLog}` );
+    // log.error(`[DEBUG stravaClient] Sending Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // log.error(`[DEBUG stravaClient] Authorization Header: ${authHeaderLog}` );
     return config;
 }, error => {
-    console.error('[DEBUG stravaClient] Request Error Interceptor:', error);
+    log.error('[DEBUG stravaClient] Request Error Interceptor:', error);
     return Promise.reject(error);
 });
 // ----------------------------------
 
 
 // --- Token Refresh Functionality ---
-// Calculate path to .env file
-const __filename = fileURLToPath(import.meta.url);
+// Calculate path to .env file (using __filename and __dirname from top of file)
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+const projectRoot = path.resolve(__dirname, '../..');
 const envPath = path.join(projectRoot, '.env');
 
 /**
@@ -68,9 +70,9 @@ async function updateTokensInEnvFile(accessToken: string, refreshToken: string):
         }
 
         await fs.writeFile(envPath, newLines.join('\n').trim() + '\n');
-        console.error('✅ Tokens successfully refreshed and updated in .env file.');
+        log.error('✅ Tokens successfully refreshed and updated in .env file.');
     } catch (error) {
-        console.error('Failed to update tokens in .env file:', error);
+        log.error('Failed to update tokens in .env file:', error);
         // Continue execution even if file update fails
     }
 }
@@ -89,7 +91,7 @@ async function refreshAccessToken(): Promise<string> {
     }
 
     try {
-        console.error('🔄 Refreshing Strava access token...');
+        log.error('🔄 Refreshing Strava access token...');
         const response = await axios.post('https://www.strava.com/oauth/token', {
             client_id: clientId,
             client_secret: clientSecret,
@@ -111,10 +113,10 @@ async function refreshAccessToken(): Promise<string> {
         // Also update .env file for persistence
         await updateTokensInEnvFile(newAccessToken, newRefreshToken);
 
-        console.error(`✅ Token refreshed. New token expires: ${new Date(response.data.expires_at * 1000).toLocaleString()}`);
+        log.error(`✅ Token refreshed. New token expires: ${new Date(response.data.expires_at * 1000).toLocaleString()}`);
         return newAccessToken;
     } catch (error) {
-        console.error('Failed to refresh access token:', error);
+        log.error('Failed to refresh access token:', error);
         throw new Error(`Failed to refresh Strava access token: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
@@ -130,21 +132,21 @@ export async function handleApiError<T>(error: unknown, context: string, retryFn
     // Check if it's an authentication error (401) that might be fixed by refreshing the token
     if (axios.isAxiosError(error) && error.response?.status === 401 && retryFn) {
         try {
-            console.error(`🔑 Authentication error in ${context}. Attempting to refresh token...`);
+            log.error(`🔑 Authentication error in ${context}. Attempting to refresh token...`);
             await refreshAccessToken();
 
             // Return the result of the retry function if it succeeds
-            console.error(`🔄 Retrying ${context} after token refresh...`);
+            log.error(`🔄 Retrying ${context} after token refresh...`);
             return await retryFn();
         } catch (refreshError) {
-            console.error(`❌ Token refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+            log.error(`❌ Token refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
             // Fall through to normal error handling if refresh fails
         }
     }
 
     // Check for subscription error (402)
     if (axios.isAxiosError(error) && error.response?.status === 402) {
-        console.error(`🔒 Subscription Required in ${context}. Status: 402`);
+        log.error(`🔒 Subscription Required in ${context}. Status: 402`);
         // Throw a specific error type or use a unique message
         throw new Error(`SUBSCRIPTION_REQUIRED: Access to this feature requires a Strava subscription. Context: ${context}`);
     }
@@ -156,17 +158,17 @@ export async function handleApiError<T>(error: unknown, context: string, retryFn
         const message = (typeof responseData === 'object' && responseData !== null && 'message' in responseData && typeof responseData.message === 'string')
             ? responseData.message
             : error.message;
-        console.error(`Strava API request failed in ${context} with status ${status}: ${message}`);
+        log.error(`Strava API request failed in ${context} with status ${status}: ${message}`);
         // Include response data in error log if helpful (be careful with sensitive data)
         if (responseData) {
-            console.error(`Response data (${context}):`, JSON.stringify(responseData, null, 2));
+            log.error(`Response data (${context}):`, JSON.stringify(responseData, null, 2));
         }
         throw new Error(`Strava API Error in ${context} (${status}): ${message}`);
     } else if (error instanceof Error) {
-        console.error(`An unexpected error occurred in ${context}:`, error);
+        log.error(`An unexpected error occurred in ${context}:`, error);
         throw new Error(`An unexpected error occurred in ${context}: ${error.message}`);
     } else {
-        console.error(`An unknown error object was caught in ${context}:`, error);
+        log.error(`An unknown error object was caught in ${context}:`, error);
         throw new Error(`An unknown error occurred in ${context}: ${String(error)}`);
     }
 }

@@ -1,15 +1,25 @@
-import { getAuthenticatedAthlete } from '../client/stravaClient.js';
-import { createLogger } from '../utils/logger.js';
-import { fileURLToPath } from 'url';
+import { z } from "zod";
+import { getAuthenticatedAthlete } from '../../client/stravaClient.js';
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
+
+const GetAthleteProfileInputSchema = z.object({
+  strava_athlete_id: z.string()
+    .describe("The Strava athlete ID for authentication"),
+});
+
+type GetAthleteProfileInput = z.infer<typeof GetAthleteProfileInputSchema>;
+
+// Export the tool definition directly
 export const getAthleteProfile = {
   name: "get-athlete-profile",
   description: "Fetches the profile information for the authenticated athlete, including their unique numeric ID needed for other tools like get-athlete-stats.",
-  // No input schema needed for this tool
-  inputSchema: undefined,
-  execute: async () => { // No input parameters needed
+  inputSchema: GetAthleteProfileInputSchema,
+  execute: async ({ strava_athlete_id }: GetAthleteProfileInput) => { // No input parameters needed
     const token = process.env.STRAVA_ACCESS_TOKEN;
 
     if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
@@ -21,9 +31,9 @@ export const getAthleteProfile = {
     }
 
     try {
-      log.error("Fetching athlete profile...");
+      log.info("Fetching athlete profile...");
       const athlete = await getAuthenticatedAthlete(token);
-      log.error(`Successfully fetched profile for ${athlete.firstname} ${athlete.lastname} (ID: ${athlete.id}).`);
+      log.info(`Successfully fetched profile for ${athlete.firstname} ${athlete.lastname} (ID: ${athlete.id}).`);
 
       const profileParts = [
         `👤 **Profile for ${athlete.firstname} ${athlete.lastname}** (ID: ${athlete.id})`,

@@ -1,13 +1,15 @@
 import { z } from "zod";
-import { getRecentActivities as fetchActivities } from '../client/stravaClient.js';
-import { createLogger } from '../utils/logger.js';
-import { fileURLToPath } from 'url';
+import { getRecentActivities as fetchActivities } from '../../client/stravaClient.js';
+import { fileURLToPath } from "url";
+import { createLogger } from '../../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
 // Reverted SDK type imports
 
 const GetRecentActivitiesInputSchema = z.object({
+  strava_athlete_id: z.string()
+    .describe("The Strava athlete ID for authentication"),
   perPage: z.number().int().positive().optional().default(30).describe("Number of activities to retrieve (default: 30)"),
 });
 
@@ -19,12 +21,8 @@ export const getRecentActivities = {
   description: "Fetches the most recent activities for the authenticated athlete.",
   inputSchema: GetRecentActivitiesInputSchema,
   // Ensure the return type matches the expected structure, relying on inference
-  execute: async ({ perPage }: GetRecentActivitiesInput) => {
+  execute: async ({ strava_athlete_id, perPage }: GetRecentActivitiesInput) => {
     const token = process.env.STRAVA_ACCESS_TOKEN;
-
-    // --- DEBUGGING: Print the token being used --- 
-    log.error(`[DEBUG] Using STRAVA_ACCESS_TOKEN: ${token?.substring(0, 5)}...${token?.slice(-5)} `);
-    // ---------------------------------------------
 
     if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
       log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
@@ -36,9 +34,9 @@ export const getRecentActivities = {
     }
 
     try {
-      log.error(`Fetching ${perPage} recent activities...`);
+      log.info(`Fetching ${perPage} recent activities...`);
       const activities = await fetchActivities(token, perPage);
-      log.error(`Successfully fetched ${activities?.length ?? 0} activities.`);
+      log.info(`Successfully fetched ${activities?.length ?? 0} activities.`);
 
       if (!activities || activities.length === 0) {
         return {
@@ -49,11 +47,11 @@ export const getRecentActivities = {
       // Map to content items with literal type
       const contentItems = activities.map(activity => {
         const dateStr = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
-        const distanceStr = activity.distance ? `${activity.distance} m` : 'N/A';
+        const distanceStr = activity.distance ? `${activity.distance}m` : 'N/A';
         // Ensure each item conforms to { type: "text", text: string }
         const item: { type: "text", text: string } = {
           type: "text" as const,
-          text: `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr} `
+          text: `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr}`
         };
         return item;
       });
@@ -65,7 +63,7 @@ export const getRecentActivities = {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       log.error("Error in get-recent-activities tool:", errorMessage);
       return {
-        content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage} ` }],
+        content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
         isError: true,
       };
     }

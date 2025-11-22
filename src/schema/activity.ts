@@ -9,6 +9,11 @@ export const StravaActivitySchema = z.object({
     name: z.string(),
     distance: z.number(),
     start_date: z.string().datetime(),
+    type: z.string(),
+    sport_type: z.string().optional(),
+    moving_time: z.number().int(),
+    elapsed_time: z.number().int(),
+    total_elevation_gain: z.number().optional(),    
     // Add other relevant fields from the Strava API response if needed
     // e.g., moving_time: z.number(), type: z.string(), ...
 });

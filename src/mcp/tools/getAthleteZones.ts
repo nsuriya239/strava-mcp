@@ -1,13 +1,23 @@
 import { z } from "zod";
-import { getAthleteZones as fetchAthleteZones } from '../client/stravaClient.js';
-import { formatDuration } from '../utils/formatters.js'; // Shared helper
-import { StravaAthleteZonesType } from '../schema/index.js';
+import { getAthleteZones as fetchAthleteZones } from '../../client/stravaClient.js';
+import { formatDuration } from '../../utils/formatters.js'; // Shared helper
+import { StravaAthleteZonesType } from '../../schema/index.js';
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
 
 const name = "get-athlete-zones";
 const description = "Retrieves the authenticated athlete's configured heart rate and power zones.";
 
 // No input schema needed for this tool
-const inputSchema = z.object({}); 
+const inputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
+});
 
 type GetAthleteZonesInput = z.infer<typeof inputSchema>;
 
@@ -19,8 +29,8 @@ function formatZoneRange(zone: { min: number; max?: number }): string {
 // Helper to format distribution buckets
 function formatDistribution(buckets: { max: number; min: number; time: number }[] | undefined): string {
     if (!buckets || buckets.length === 0) return "  Distribution data not available.";
-    
-    return buckets.map(bucket => 
+
+    return buckets.map(bucket =>
         `  - ${bucket.min}-${bucket.max === -1 ? '∞' : bucket.max}: ${formatDuration(bucket.time)}`
     ).join('\n');
 }
@@ -36,7 +46,7 @@ function formatAthleteZones(zonesData: StravaAthleteZonesType): string {
             responseText += `   Zone ${index + 1}: ${formatZoneRange(zone)} bpm\n`;
         });
         if (zonesData.heart_rate.distribution_buckets) {
-             responseText += "   Time Distribution:\n" + formatDistribution(zonesData.heart_rate.distribution_buckets) + "\n";
+            responseText += "   Time Distribution:\n" + formatDistribution(zonesData.heart_rate.distribution_buckets) + "\n";
         }
     } else {
         responseText += "\n❤️ Heart Rate Zones: Not configured\n";
@@ -47,8 +57,8 @@ function formatAthleteZones(zonesData: StravaAthleteZonesType): string {
         zonesData.power.zones.forEach((zone, index) => {
             responseText += `   Zone ${index + 1}: ${formatZoneRange(zone)} W\n`;
         });
-         if (zonesData.power.distribution_buckets) {
-             responseText += "   Time Distribution:\n" + formatDistribution(zonesData.power.distribution_buckets) + "\n";
+        if (zonesData.power.distribution_buckets) {
+            responseText += "   Time Distribution:\n" + formatDistribution(zonesData.power.distribution_buckets) + "\n";
         }
     } else {
         responseText += "\n⚡ Power Zones: Not configured\n";
@@ -61,11 +71,11 @@ export const getAthleteZonesTool = {
     name,
     description: description + "\n\nOutput includes both a formatted summary and the raw JSON data.",
     inputSchema,
-    execute: async (_input: GetAthleteZonesInput) => {
+    execute: async ({ strava_athlete_id }: GetAthleteZonesInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -73,18 +83,18 @@ export const getAthleteZonesTool = {
         }
 
         try {
-            console.error("Fetching athlete zones...");
+            log.info("Fetching athlete zones...");
             const zonesData = await fetchAthleteZones(token);
-            
+
             // Format the summary
             const formattedText = formatAthleteZones(zonesData);
-            
+
             // Prepare the raw data
             const rawDataText = `\n\nRaw Athlete Zone Data:\n${JSON.stringify(zonesData, null, 2)}`;
-            
-            console.error("Successfully fetched athlete zones.");
+
+            log.info("Successfully fetched athlete zones.");
             // Return both summary and raw data
-            return { 
+            return {
                 content: [
                     { type: "text" as const, text: formattedText },
                     { type: "text" as const, text: rawDataText }
@@ -93,12 +103,12 @@ export const getAthleteZonesTool = {
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching athlete zones: ${errorMessage}`);
-            
+            log.error(`Error fetching athlete zones: ${errorMessage}`);
+
             let userFriendlyMessage;
             // Check for common errors like missing scope (403 Forbidden)
             if (errorMessage.includes("403")) {
-                 userFriendlyMessage = "🔒 Access denied. This tool requires 'profile:read_all' permission. Please re-authorize with the correct scope.";
+                userFriendlyMessage = "🔒 Access denied. This tool requires 'profile:read_all' permission. Please re-authorize with the correct scope.";
             } else if (errorMessage.startsWith("SUBSCRIPTION_REQUIRED:")) { // In case Strava changes this later
                 userFriendlyMessage = `🔒 Accessing zones might require a Strava subscription. Details: ${errorMessage}`;
             } else {

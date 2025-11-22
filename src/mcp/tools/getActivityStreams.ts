@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stravaApi } from '../client/stravaClient.js';
+import { stravaApi } from '../../client/stravaClient.js';
 
 // Define stream types available in Strava API
 const STREAM_TYPES = [
@@ -12,6 +12,8 @@ const RESOLUTION_TYPES = ['low', 'medium', 'high'] as const;
 
 // Input schema using Zod
 export const inputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     id: z.number().or(z.string()).describe(
         'The Strava activity identifier to fetch streams for. This can be obtained from activity URLs or the get-activities tool.'
     ),
@@ -128,43 +130,43 @@ interface GradeStream extends BaseStream {
     data: number[]; // percent grade
 }
 
-type StreamSet = (TimeStream | DistanceStream | LatLngStream | AltitudeStream | 
-                 VelocityStream | HeartrateStream | CadenceStream | PowerStream | 
-                 TempStream | MovingStream | GradeStream)[];
+type StreamSet = (TimeStream | DistanceStream | LatLngStream | AltitudeStream |
+    VelocityStream | HeartrateStream | CadenceStream | PowerStream |
+    TempStream | MovingStream | GradeStream)[];
 
 // Tool definition
 export const getActivityStreamsTool = {
     name: 'get-activity-streams',
-    description: 
+    description:
         'Retrieves detailed time-series data streams from a Strava activity. Perfect for analyzing workout metrics, ' +
         'visualizing routes, or performing detailed activity analysis.\n\n' +
-        
+
         'Key Features:\n' +
         '1. Multiple Data Types: Access various metrics like heart rate, power, speed, GPS coordinates, etc.\n' +
         '2. Flexible Resolution: Choose data density from low (~100 points) to high (~10000 points)\n' +
         '3. Smart Pagination: Get data in manageable chunks or all at once\n' +
         '4. Rich Statistics: Includes min/max/avg for numeric streams\n' +
         '5. Formatted Output: Data is processed into human and LLM-friendly formats\n\n' +
-        
+
         'Common Use Cases:\n' +
         '- Analyzing workout intensity through heart rate zones\n' +
         '- Calculating power metrics for cycling activities\n' +
         '- Visualizing route data using GPS coordinates\n' +
         '- Analyzing pace and elevation changes\n' +
         '- Detailed segment analysis\n\n' +
-        
+
         'Output Format:\n' +
         '1. Metadata: Activity overview, available streams, data points\n' +
         '2. Statistics: Summary stats for each stream type (max/min/avg where applicable)\n' +
         '3. Stream Data: Actual time-series data, formatted for easy use\n\n' +
-        
+
         'Notes:\n' +
         '- Requires activity:read scope\n' +
         '- Not all streams are available for all activities\n' +
         '- Older activities might have limited data\n' +
         '- Large activities are automatically paginated to handle size limits',
     inputSchema,
-    execute: async ({ id, types, resolution, series_type, page = 1, points_per_page = 100 }: GetActivityStreamsParams) => {
+    execute: async ({ strava_athlete_id, id, types, resolution, series_type, page = 1, points_per_page = 100 }: GetActivityStreamsParams) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
         if (!token) {
             return {
@@ -176,7 +178,7 @@ export const getActivityStreamsTool = {
         try {
             // Set the auth token for this request
             stravaApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            
+
             // Build query parameters
             const params: Record<string, any> = {};
             if (resolution) params.resolution = resolution;
@@ -184,21 +186,21 @@ export const getActivityStreamsTool = {
 
             // Convert query params to string
             const queryString = new URLSearchParams(params).toString();
-            
+
             // Build the endpoint URL with types in the path
             const endpoint = `/activities/${id}/streams/${types.join(',')}${queryString ? '?' + queryString : ''}`;
-            
+
             const response = await stravaApi.get<StreamSet>(endpoint);
             const streams = response.data;
 
             if (!streams || streams.length === 0) {
                 return {
-                    content: [{ 
-                        type: 'text' as const, 
+                    content: [{
+                        type: 'text' as const,
                         text: '⚠️ No streams were returned. This could mean:\n' +
-                              '1. The activity was recorded without this data\n' +
-                              '2. The activity is not a GPS-based activity\n' +
-                              '3. The activity is too old (Strava may not keep all stream data indefinitely)'
+                            '1. The activity was recorded without this data\n' +
+                            '2. The activity is not a GPS-based activity\n' +
+                            '3. The activity is too old (Strava may not keep all stream data indefinitely)'
                     }],
                     isError: true
                 };
@@ -247,7 +249,7 @@ export const getActivityStreamsTool = {
                         };
                         break;
                 }
-                
+
                 streamStats[stream.type] = stats;
             });
 
@@ -264,21 +266,21 @@ export const getActivityStreamsTool = {
                         {
                             type: 'text' as const,
                             text: `📊 Activity Stream Data (${totalPoints} points)\n` +
-                                  `Will be sent in ${numChunks + 1} messages:\n` +
-                                  `1. Metadata and Statistics\n` +
-                                  `2-${numChunks + 1}. Stream Data (${CHUNK_SIZE} points per message)\n\n` +
-                                  `Message 1/${numChunks + 1}:\n` +
-                                  JSON.stringify({
-                                      metadata: {
-                                          available_types: streams.map(s => s.type),
-                                          total_points: totalPoints,
-                                          total_chunks: numChunks,
-                                          chunk_size: CHUNK_SIZE,
-                                          resolution: referenceStream.resolution,
-                                          series_type: referenceStream.series_type
-                                      },
-                                      statistics: streamStats
-                                  }, null, 2)
+                                `Will be sent in ${numChunks + 1} messages:\n` +
+                                `1. Metadata and Statistics\n` +
+                                `2-${numChunks + 1}. Stream Data (${CHUNK_SIZE} points per message)\n\n` +
+                                `Message 1/${numChunks + 1}:\n` +
+                                JSON.stringify({
+                                    metadata: {
+                                        available_types: streams.map(s => s.type),
+                                        total_points: totalPoints,
+                                        total_chunks: numChunks,
+                                        chunk_size: CHUNK_SIZE,
+                                        resolution: referenceStream.resolution,
+                                        series_type: referenceStream.series_type
+                                    },
+                                    statistics: streamStats
+                                }, null, 2)
                         },
                         // Data messages
                         ...Array.from({ length: numChunks }, (_, i) => {
@@ -290,7 +292,7 @@ export const getActivityStreamsTool = {
                             streams.forEach(stream => {
                                 const chunkData = stream.data.slice(chunkStart, chunkEnd);
                                 let processedData: any;
-                                
+
                                 switch (stream.type) {
                                     case 'latlng':
                                         const latlngData = chunkData as [number, number][];
@@ -299,7 +301,7 @@ export const getActivityStreamsTool = {
                                             longitude: Number(lng.toFixed(6))
                                         }));
                                         break;
-                                    
+
                                     case 'time':
                                         const timeData = chunkData as number[];
                                         processedData = timeData.map(seconds => ({
@@ -307,7 +309,7 @@ export const getActivityStreamsTool = {
                                             formatted: new Date(seconds * 1000).toISOString().substr(11, 8)
                                         }));
                                         break;
-                                    
+
                                     case 'distance':
                                         const distanceData = chunkData as number[];
                                         processedData = distanceData.map(meters => ({
@@ -315,7 +317,7 @@ export const getActivityStreamsTool = {
                                             kilometers: Number((meters / 1000).toFixed(2))
                                         }));
                                         break;
-                                    
+
                                     case 'velocity_smooth':
                                         const velocityData = chunkData as number[];
                                         processedData = velocityData.map(mps => ({
@@ -323,7 +325,7 @@ export const getActivityStreamsTool = {
                                             kilometers_per_hour: Number((mps * 3.6).toFixed(1))
                                         }));
                                         break;
-                                    
+
                                     case 'heartrate':
                                     case 'cadence':
                                     case 'watts':
@@ -331,16 +333,16 @@ export const getActivityStreamsTool = {
                                         const numericData = chunkData as number[];
                                         processedData = numericData.map(v => Number(v));
                                         break;
-                                    
+
                                     case 'grade_smooth':
                                         const gradeData = chunkData as number[];
                                         processedData = gradeData.map(grade => Number(grade.toFixed(1)));
                                         break;
-                                    
+
                                     case 'moving':
                                         processedData = chunkData as boolean[];
                                         break;
-                                    
+
                                     default:
                                         processedData = chunkData;
                                 }
@@ -351,7 +353,7 @@ export const getActivityStreamsTool = {
                             return {
                                 type: 'text' as const,
                                 text: `Message ${i + 2}/${numChunks + 1} (points ${chunkStart + 1}-${chunkEnd}):\n` +
-                                      JSON.stringify(streamData, null, 2)
+                                    JSON.stringify(streamData, null, 2)
                             };
                         })
                     ]
@@ -364,8 +366,8 @@ export const getActivityStreamsTool = {
             // Validate page number
             if (page < 1 || page > totalPages) {
                 return {
-                    content: [{ 
-                        type: 'text' as const, 
+                    content: [{
+                        type: 'text' as const,
                         text: `❌ Invalid page number. Please specify a page between 1 and ${totalPages}`
                     }],
                     isError: true
@@ -394,7 +396,7 @@ export const getActivityStreamsTool = {
             streams.forEach(stream => {
                 let processedData: any;
                 const paginatedData = stream.data.slice(startIdx, endIdx);
-                
+
                 switch (stream.type) {
                     case 'latlng':
                         const latlngData = paginatedData as [number, number][];
@@ -403,7 +405,7 @@ export const getActivityStreamsTool = {
                             longitude: Number(lng.toFixed(6))
                         }));
                         break;
-                    
+
                     case 'time':
                         const timeData = paginatedData as number[];
                         processedData = timeData.map(seconds => ({
@@ -411,7 +413,7 @@ export const getActivityStreamsTool = {
                             formatted: new Date(seconds * 1000).toISOString().substr(11, 8)
                         }));
                         break;
-                    
+
                     case 'distance':
                         const distanceData = paginatedData as number[];
                         processedData = distanceData.map(meters => ({
@@ -419,7 +421,7 @@ export const getActivityStreamsTool = {
                             kilometers: Number((meters / 1000).toFixed(2))
                         }));
                         break;
-                    
+
                     case 'velocity_smooth':
                         const velocityData = paginatedData as number[];
                         processedData = velocityData.map(mps => ({
@@ -427,7 +429,7 @@ export const getActivityStreamsTool = {
                             kilometers_per_hour: Number((mps * 3.6).toFixed(1))
                         }));
                         break;
-                    
+
                     case 'heartrate':
                     case 'cadence':
                     case 'watts':
@@ -435,16 +437,16 @@ export const getActivityStreamsTool = {
                         const numericData = paginatedData as number[];
                         processedData = numericData.map(v => Number(v));
                         break;
-                    
+
                     case 'grade_smooth':
                         const gradeData = paginatedData as number[];
                         processedData = gradeData.map(grade => Number(grade.toFixed(1)));
                         break;
-                    
+
                     case 'moving':
                         processedData = paginatedData as boolean[];
                         break;
-                    
+
                     default:
                         processedData = paginatedData;
                 }
@@ -453,22 +455,22 @@ export const getActivityStreamsTool = {
             });
 
             return {
-                content: [{ 
-                    type: 'text' as const, 
+                content: [{
+                    type: 'text' as const,
                     text: JSON.stringify(streamData, null, 2)
                 }]
             };
         } catch (error: any) {
             const statusCode = error.response?.status;
             const errorMessage = error.response?.data?.message || error.message;
-            
+
             let userFriendlyError = `❌ Failed to fetch activity streams (${statusCode}): ${errorMessage}\n\n`;
             userFriendlyError += 'This could be because:\n';
             userFriendlyError += '1. The activity ID is invalid\n';
             userFriendlyError += '2. You don\'t have permission to view this activity\n';
             userFriendlyError += '3. The requested stream types are not available\n';
             userFriendlyError += '4. The activity is too old and the streams have been archived';
-            
+
             return {
                 content: [{
                     type: 'text' as const,
@@ -483,7 +485,7 @@ export const getActivityStreamsTool = {
 // Helper function to calculate normalized power
 function calculateNormalizedPower(powerData: number[]): number {
     if (powerData.length < 30) return 0;
-    
+
     // 30-second moving average
     const windowSize = 30;
     const movingAvg = [];
@@ -492,12 +494,12 @@ function calculateNormalizedPower(powerData: number[]): number {
         const avg = window.reduce((a, b) => a + b, 0) / windowSize;
         movingAvg.push(Math.pow(avg, 4));
     }
-    
+
     // Calculate normalized power
     const avgPower = Math.pow(
         movingAvg.reduce((a, b) => a + b, 0) / movingAvg.length,
         0.25
     );
-    
+
     return Math.round(avgPower);
 } 

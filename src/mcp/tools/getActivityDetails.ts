@@ -2,12 +2,19 @@
 import { z } from "zod";
 import {
     getActivityById as fetchActivityById,
-} from '../client/stravaClient.js';
-import { StravaDetailedActivityType } from '../schema/index.js';
-import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../utils/formatters.js';
+} from '../../client/stravaClient.js';
+import { StravaDetailedActivityType } from '../../schema/index.js';
+import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../../utils/formatters.js';
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // Zod schema for input validation
 const GetActivityDetailsInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     activityId: z.number().int().positive().describe("The unique identifier of the activity to fetch details for.")
 });
 
@@ -53,11 +60,11 @@ export const getActivityDetailsTool = {
     name: "get-activity-details",
     description: "Fetches detailed information about a specific activity using its ID.",
     inputSchema: GetActivityDetailsInputSchema,
-    execute: async ({ activityId }: GetActivityDetailsInput) => {
+    execute: async ({ strava_athlete_id, activityId }: GetActivityDetailsInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -65,16 +72,16 @@ export const getActivityDetailsTool = {
         }
 
         try {
-            console.error(`Fetching details for activity ID: ${activityId}...`);
+            log.info(`Fetching details for activity ID: ${activityId}...`);
             // Removed getAuthenticatedAthlete call
             const activity = await fetchActivityById(token, activityId);
             const activityDetailsText = formatActivityDetails(activity); // Use metric formatter
 
-            console.error(`Successfully fetched details for activity: ${activity.name}`);
+            log.info(`Successfully fetched details for activity: ${activity.name}`);
             return { content: [{ type: "text" as const, text: activityDetailsText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching activity ${activityId}: ${errorMessage}`);
+            log.error(`Error fetching activity ${activityId}: ${errorMessage}`);
             // Removed call to handleApiError
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Activity with ID ${activityId} not found.`

@@ -1,3 +1,9 @@
+import { createLogger } from '../utils/logger.js';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
 import { StravaAthleteType, DetailedAthleteSchema, StravaStatsType, ActivityStatsSchema, StravaAthleteZonesType, AthleteZonesSchema } from '../schema/index.js';
 import { stravaApi, handleApiError } from '../client/stravaClient.js';
 
@@ -23,8 +29,8 @@ export async function getAuthenticatedAthlete(accessToken: string): Promise<Stra
 
         if (!validationResult.success) {
             // Log the raw response data on validation failure for debugging
-            console.error("Strava API raw response data (getAuthenticatedAthlete):", JSON.stringify(response.data, null, 2));
-            console.error("Strava API response validation failed (getAuthenticatedAthlete):", validationResult.error);
+            log.error("Strava API raw response data (getAuthenticatedAthlete):", JSON.stringify(response.data, null, 2));
+            log.error("Strava API response validation failed (getAuthenticatedAthlete):", validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         // Type assertion is safe here due to successful validation
@@ -63,7 +69,7 @@ export async function getAthleteStats(accessToken: string, athleteId: number): P
         const validationResult = ActivityStatsSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error("Strava API response validation failed (getAthleteStats):", validationResult.error);
+            log.error("Strava API response validation failed (getAthleteStats):", validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         return validationResult.data;
@@ -95,7 +101,7 @@ export async function getAthleteZones(accessToken: string): Promise<StravaAthlet
         const validationResult = AthleteZonesSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error(`Strava API validation failed (getAthleteZones):`, validationResult.error);
+            log.error(`Strava API validation failed (getAthleteZones):`, validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
 

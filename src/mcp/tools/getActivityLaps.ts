@@ -1,6 +1,11 @@
 import { z } from "zod";
-import { getActivityLaps as getActivityLapsClient } from '../client/stravaClient.js';
-import { formatDuration } from '../utils/formatters.js'; // Import helper
+import { fileURLToPath } from "url";
+import { getActivityLaps as getActivityLapsClient } from '../../client/stravaClient.js';
+import { formatDuration } from '../../utils/formatters.js'; // Import helper
+import { createLogger } from '../../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 const name = "get-activity-laps";
 
@@ -35,6 +40,8 @@ Notes:
 `;
 
 const inputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     id: z.union([z.number(), z.string()]).describe("The identifier of the activity to fetch laps for."),
 });
 
@@ -44,11 +51,11 @@ export const getActivityLapsTool = {
     name,
     description,
     inputSchema,
-    execute: async ({ id }: GetActivityLapsInput) => {
+    execute: async ({ strava_athlete_id, id }: GetActivityLapsInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -56,7 +63,7 @@ export const getActivityLapsTool = {
         }
 
         try {
-            console.error(`Fetching laps for activity ID: ${id}...`);
+            log.error(`Fetching laps for activity ID: ${id}...`);
             const laps = await getActivityLapsClient(token, id);
 
             if (!laps || laps.length === 0) {
@@ -83,12 +90,12 @@ export const getActivityLapsTool = {
             });
 
             const summaryText = `Activity Laps Summary (ID: ${id}):\n\n${lapSummaries.join('\n\n')}`;
-            
+
             // Add raw data section
             const rawDataText = `\n\nComplete Lap Data:\n${JSON.stringify(laps, null, 2)}`;
-            
-            console.error(`Successfully fetched ${laps.length} laps for activity ${id}`);
-            
+
+            log.info(`Successfully fetched ${laps.length} laps for activity ${id}`);
+
             return {
                 content: [
                     { type: "text" as const, text: summaryText },
@@ -97,7 +104,7 @@ export const getActivityLapsTool = {
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching laps for activity ${id}: ${errorMessage}`);
+            log.error(`Error fetching laps for activity ${id}: ${errorMessage}`);
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Activity with ID ${id} not found.`
                 : `An unexpected error occurred while fetching laps for activity ${id}. Details: ${errorMessage}`;

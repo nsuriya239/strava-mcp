@@ -1,3 +1,9 @@
+import { createLogger } from '../utils/logger.js';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
 import { z } from "zod";
 import { StravaDetailedSegmentEffortType, DetailedSegmentEffortSchema } from '../schema/index.js';
 import { stravaApi, handleApiError } from '../client/stravaClient.js';
@@ -27,7 +33,7 @@ export async function getSegmentEffort(accessToken: string, effortId: number): P
         const validationResult = DetailedSegmentEffortSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error(`Strava API validation failed (getSegmentEffort: ${effortId}):`, validationResult.error);
+            log.error(`Strava API validation failed (getSegmentEffort: ${effortId}):`, validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         return validationResult.data;
@@ -83,7 +89,7 @@ export async function listSegmentEfforts(
         const validationResult = z.array(DetailedSegmentEffortSchema).safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error(`Strava API validation failed (listSegmentEfforts: segment ${segmentId}):`, validationResult.error);
+            log.error(`Strava API validation failed (listSegmentEfforts: segment ${segmentId}):`, validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         return validationResult.data;

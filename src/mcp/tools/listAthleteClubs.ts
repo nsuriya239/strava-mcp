@@ -1,15 +1,29 @@
-import { listAthleteClubs as fetchClubs } from '../client/stravaClient.js'; // Renamed import
+import { z } from "zod";
+import { listAthleteClubs as fetchClubs } from '../../client/stravaClient.js'; // Renamed import
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
+const ListAthleteClubsInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
+});
+
+type ListAthleteClubsInput = z.infer<typeof ListAthleteClubsInputSchema>;
 
 // Export the tool definition directly
 export const listAthleteClubs = {
     name: "list-athlete-clubs",
     description: "Lists the clubs the authenticated athlete is a member of.",
-    inputSchema: undefined,
-    execute: async () => {
+    inputSchema: ListAthleteClubsInputSchema,
+    execute: async ({ strava_athlete_id }: ListAthleteClubsInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token || token === 'YOUR_STRAVA_ACCESS_TOKEN_HERE') {
-            console.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
+            log.error("Missing or placeholder STRAVA_ACCESS_TOKEN in .env");
             return {
                 content: [{ type: "text" as const, text: "❌ Configuration Error: STRAVA_ACCESS_TOKEN is missing or not set in the .env file." }],
                 isError: true,
@@ -17,9 +31,9 @@ export const listAthleteClubs = {
         }
 
         try {
-            console.error("Fetching athlete clubs...");
+            log.info("Fetching athlete clubs...");
             const clubs = await fetchClubs(token);
-            console.error(`Successfully fetched ${clubs?.length ?? 0} clubs.`);
+            log.info(`Successfully fetched ${clubs?.length ?? 0} clubs.`);
 
             if (!clubs || clubs.length === 0) {
                 return { content: [{ type: "text" as const, text: " MNo clubs found for the athlete." }] };
@@ -41,7 +55,7 @@ export const listAthleteClubs = {
             return { content: [{ type: "text" as const, text: responseText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-            console.error("Error in list-athlete-clubs tool:", errorMessage);
+            log.error("Error in list-athlete-clubs tool:", errorMessage);
             return {
                 content: [{ type: "text" as const, text: `❌ API Error: ${errorMessage}` }],
                 isError: true,

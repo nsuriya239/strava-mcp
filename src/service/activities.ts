@@ -1,6 +1,11 @@
 import { StravaActivitiesResponseSchema, StravaDetailedActivityType, DetailedActivitySchema, StravaLapType, StravaLapsResponseSchema } from '../schema/index.js';
 import { stravaApi, handleApiError } from '../client/stravaClient.js';
 import { GetAllActivitiesParams } from "./types.js";
+import { createLogger } from '../utils/logger.js';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 /**
  * Fetches recent activities for the authenticated athlete from the Strava API.
@@ -24,7 +29,7 @@ export async function getRecentActivities(accessToken: string, perPage = 30): Pr
         const validationResult = StravaActivitiesResponseSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error("Strava API response validation failed (getRecentActivities):", validationResult.error);
+            log.error("Strava API response validation failed (getRecentActivities):", validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
 
@@ -49,15 +54,15 @@ export async function getRecentActivities(accessToken: string, perPage = 30): Pr
  * @throws Throws an error if the API request fails or the response format is unexpected.
  */
 export async function getAllActivities(
-    accessToken: string, 
+    accessToken: string,
     params: GetAllActivitiesParams = {}
 ): Promise<any[]> {
     if (!accessToken) {
         throw new Error("Strava access token is required.");
     }
 
-    const { 
-        page = 1, 
+    const {
+        page = 1,
         perPage = 200, // Max allowed by Strava
         before,
         after,
@@ -75,7 +80,7 @@ export async function getAllActivities(
                 page: currentPage,
                 per_page: perPage
             };
-            
+
             // Add date filters if provided
             if (before !== undefined) queryParams.before = before;
             if (after !== undefined) queryParams.after = after;
@@ -86,18 +91,20 @@ export async function getAllActivities(
                 params: queryParams
             });
 
+            log.debug(`Fetched page ${currentPage} with params: ${JSON.stringify(queryParams)}`);
+
             const validationResult = StravaActivitiesResponseSchema.safeParse(response.data);
 
             if (!validationResult.success) {
-                console.error(`Strava API response validation failed (getAllActivities page ${currentPage}):`, validationResult.error);
+                log.error(`Strava API response validation failed (getAllActivities page ${currentPage}):`, validationResult.error);
                 throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
             }
 
             const activities = validationResult.data;
-            
+
             // Add activities to collection
             allActivities.push(...activities);
-            
+
             // Report progress if callback provided
             if (onProgress) {
                 onProgress(allActivities.length, currentPage);
@@ -113,6 +120,8 @@ export async function getAllActivities(
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
         }
+
+        // log.debug(`Activity fetch completed. Output response: ${JSON.stringify(allActivities)}`);
 
         return allActivities;
     } catch (error) {
@@ -152,7 +161,7 @@ export async function getActivityById(accessToken: string, activityId: number): 
         const validationResult = DetailedActivitySchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error(`Strava API validation failed (getActivityById: ${activityId}):`, validationResult.error);
+            log.error(`Strava API validation failed (getActivityById: ${activityId}):`, validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         return validationResult.data;
@@ -185,7 +194,7 @@ export async function getActivityLaps(accessToken: string, activityId: number | 
         const validationResult = StravaLapsResponseSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error(`Strava API validation failed (getActivityLaps: ${activityId}):`, validationResult.error);
+            log.error(`Strava API validation failed (getActivityLaps: ${activityId}):`, validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
 

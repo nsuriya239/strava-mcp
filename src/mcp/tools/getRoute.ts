@@ -1,13 +1,22 @@
 import { z } from "zod";
-import { getRouteById /*, handleApiError */ } from '../client/stravaClient.js'; // Removed handleApiError import
-import { formatRouteSummary } from '../utils/formatters.js'; // Import shared formatter
+import { getRouteById /*, handleApiError */ } from '../../client/stravaClient.js'; // Removed handleApiError import
+import { formatRouteSummary } from '../../utils/formatters.js'; // Import shared formatter
+
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // Zod schema for input validation
 const GetRouteInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     routeId: z.string()
         .regex(/^\d+$/, "Route ID must contain only digits")
         .refine(val => val.length > 0, "Route ID cannot be empty")
-        .describe("The unique identifier of the route to fetch.")});
+        .describe("The unique identifier of the route to fetch.")
+});
 
 type GetRouteInput = z.infer<typeof GetRouteInputSchema>;
 
@@ -17,11 +26,11 @@ export const getRouteTool = {
     description: "Fetches detailed information about a specific route using its ID.",
     inputSchema: GetRouteInputSchema,
     execute: async (input: GetRouteInput) => {
-        const { routeId } = input;
+        const { strava_athlete_id, routeId } = input;
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -29,15 +38,15 @@ export const getRouteTool = {
         }
 
         try {
-            console.error(`Fetching route details for ID: ${routeId}...`);
+            log.info(`Fetching route details for ID: ${routeId}...`);
             const route = await getRouteById(token, routeId);
             const summary = formatRouteSummary(route); // Call shared formatter without units
 
-            console.error(`Successfully fetched route ${routeId}.`);
+            log.info(`Successfully fetched route ${routeId}.`);
             return { content: [{ type: "text" as const, text: summary }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error fetching route ${routeId}: ${errorMessage}`);
+            log.error(`Error fetching route ${routeId}: ${errorMessage}`);
             const userFriendlyMessage = errorMessage.includes("Record Not Found") || errorMessage.includes("404")
                 ? `Route with ID ${routeId} not found.`
                 : `An unexpected error occurred while fetching route ${routeId}. Details: ${errorMessage}`;

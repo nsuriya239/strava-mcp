@@ -1,12 +1,19 @@
 import { z } from "zod";
 import {
     listSegmentEfforts as fetchSegmentEfforts,
-} from '../client/stravaClient.js';
-import { StravaDetailedSegmentEffortType } from '../schema/index.js';
-import { formatDistance, formatDuration } from '../utils/formatters.js';
+} from '../../client/stravaClient.js';
+import { StravaDetailedSegmentEffortType } from '../../schema/index.js';
+import { formatDistance, formatDuration } from '../../utils/formatters.js';
+import { createLogger } from '../../utils/logger.js';
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // Zod schema for input validation
 const ListSegmentEffortsInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     segmentId: z.number().int().positive().describe("The ID of the segment for which to list efforts."),
     startDateLocal: z.string().datetime({ message: "Invalid start date format. Use ISO 8601." }).optional().describe("Filter efforts starting after this ISO 8601 date-time (optional)."),
     endDateLocal: z.string().datetime({ message: "Invalid end date format. Use ISO 8601." }).optional().describe("Filter efforts ending before this ISO 8601 date-time (optional)."),
@@ -36,11 +43,11 @@ export const listSegmentEffortsTool = {
     name: "list-segment-efforts",
     description: "Lists the authenticated athlete's efforts on a specific segment, optionally filtering by date.",
     inputSchema: ListSegmentEffortsInputSchema,
-    execute: async ({ segmentId, startDateLocal, endDateLocal, perPage }: ListSegmentEffortsInput) => {
+    execute: async ({ strava_athlete_id, segmentId, startDateLocal, endDateLocal, perPage }: ListSegmentEffortsInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
 
         if (!token) {
-            console.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
+            log.error("Missing STRAVA_ACCESS_TOKEN environment variable.");
             return {
                 content: [{ type: "text" as const, text: "Configuration error: Missing Strava access token." }],
                 isError: true
@@ -48,8 +55,8 @@ export const listSegmentEffortsTool = {
         }
 
         try {
-            console.error(`Fetching segment efforts for segment ID: ${segmentId}...`);
-            
+            log.info(`Fetching segment efforts for segment ID: ${segmentId}...`);
+
             // Use the new params object structure
             const efforts = await fetchSegmentEfforts(token, segmentId, {
                 startDateLocal,
@@ -58,18 +65,18 @@ export const listSegmentEffortsTool = {
             });
 
             if (!efforts || efforts.length === 0) {
-                console.error(`No efforts found for segment ${segmentId} with the given filters.`);
+                log.error(`No efforts found for segment ${segmentId} with the given filters.`);
                 return { content: [{ type: "text" as const, text: `No efforts found for segment ${segmentId} matching the criteria.` }] };
             }
 
-            console.error(`Successfully fetched ${efforts.length} efforts for segment ${segmentId}.`);
+            log.error(`Successfully fetched ${efforts.length} efforts for segment ${segmentId}.`);
             const effortSummaries = efforts.map(effort => formatSegmentEffort(effort)); // Use metric formatter
             const responseText = `**Segment ${segmentId} Efforts:**\n\n${effortSummaries.join("\n")}`;
 
             return { content: [{ type: "text" as const, text: responseText }] };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`Error listing efforts for segment ${segmentId}: ${errorMessage}`);
+            log.error(`Error listing efforts for segment ${segmentId}: ${errorMessage}`);
 
             let userFriendlyMessage;
             if (errorMessage.startsWith("SUBSCRIPTION_REQUIRED:")) {

@@ -1,3 +1,9 @@
+import { createLogger } from '../utils/logger.js';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
+
 import { StravaClubType, StravaClubsResponseSchema } from '../schema/index.js';
 import { stravaApi, handleApiError } from '../client/stravaClient.js';
 
@@ -21,7 +27,7 @@ export async function listAthleteClubs(accessToken: string): Promise<StravaClubT
         const validationResult = StravaClubsResponseSchema.safeParse(response.data);
 
         if (!validationResult.success) {
-            console.error("Strava API validation failed (listAthleteClubs):", validationResult.error);
+            log.error("Strava API validation failed (listAthleteClubs):", validationResult.error);
             throw new Error(`Invalid data format received from Strava API: ${validationResult.error.message}`);
         }
         return validationResult.data;

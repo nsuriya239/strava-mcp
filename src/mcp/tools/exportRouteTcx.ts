@@ -1,22 +1,30 @@
 import { z } from "zod";
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { exportRouteGpx as fetchGpxData } from '../client/stravaClient.js';
+import { fileURLToPath } from "url";
+import { exportRouteTcx as fetchTcxData } from '../../client/stravaClient.js';
+import { createLogger } from '../../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const log = createLogger(__filename);
 
 // Define the input schema for the tool
-const ExportRouteGpxInputSchema = z.object({
+// Define the input schema for the tool
+const ExportRouteTcxInputSchema = z.object({
+    strava_athlete_id: z.string()
+        .describe("The Strava athlete ID for authentication"),
     routeId: z.string().describe("The ID of the Strava route to export."),
 });
 
 // Infer the input type from the schema
-type ExportRouteGpxInput = z.infer<typeof ExportRouteGpxInputSchema>;
+type ExportRouteTcxInput = z.infer<typeof ExportRouteTcxInputSchema>;
 
 // Export the tool definition directly
-export const exportRouteGpx = {
-    name: "export-route-gpx",
-    description: "Exports a specific Strava route in GPX format and saves it to a pre-configured local directory.",
-    inputSchema: ExportRouteGpxInputSchema,
-    execute: async ({ routeId }: ExportRouteGpxInput) => {
+export const exportRouteTcx = {
+    name: "export-route-tcx",
+    description: "Exports a specific Strava route in TCX format and saves it to a pre-configured local directory.",
+    inputSchema: ExportRouteTcxInputSchema,
+    execute: async ({ strava_athlete_id, routeId }: ExportRouteTcxInput) => {
         const token = process.env.STRAVA_ACCESS_TOKEN;
         if (!token) {
             // Strict return structure
@@ -38,7 +46,7 @@ export const exportRouteGpx = {
         try {
             // Ensure the directory exists, create if not
             if (!fs.existsSync(exportDir)) {
-                console.error(`Export directory ${exportDir} not found, creating it...`);
+                log.error(`Export directory ${exportDir} not found, creating it...`);
                 fs.mkdirSync(exportDir, { recursive: true });
             } else {
                 // Check if it's a directory and writable (existing logic)
@@ -53,23 +61,24 @@ export const exportRouteGpx = {
                 fs.accessSync(exportDir, fs.constants.W_OK);
             }
 
-            const gpxData = await fetchGpxData(token, routeId);
-            const filename = `route-${routeId}.gpx`;
+            const tcxData = await fetchTcxData(token, routeId);
+            const filename = `route-${routeId}.tcx`;
             const fullPath = path.join(exportDir, filename);
-            fs.writeFileSync(fullPath, gpxData);
+            fs.writeFileSync(fullPath, tcxData);
 
             // Strict return structure
             return {
-                content: [{ type: "text" as const, text: `✅ Route ${routeId} exported successfully as GPX to: ${fullPath}` }],
+                content: [{ type: "text" as const, text: `✅ Route ${routeId} exported successfully as TCX to: ${fullPath}` }],
             };
 
         } catch (err: any) {
-            console.error(`Error in export-route-gpx tool for route ${routeId}:`, err);
-            // Strict return structure
-            let userMessage = `❌ Error exporting route ${routeId} as GPX: ${err.message}`;
+            // Handle potential errors during directory creation/check or file writing
+            log.error(`Error in export-route-tcx tool for route ${routeId}:`, err);
+            let userMessage = `❌ Error exporting route ${routeId} as TCX: ${err.message}`;
             if (err.code === 'EACCES') {
                 userMessage = `❌ Error: No write permission for ROUTE_EXPORT_PATH directory (${exportDir}).`;
             }
+            // Strict return structure
             return {
                 content: [{ type: "text" as const, text: userMessage }],
                 isError: true
