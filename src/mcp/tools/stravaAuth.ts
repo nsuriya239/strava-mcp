@@ -4,16 +4,18 @@ import { createLogger } from "../../utils/logger.js";
 import { fileURLToPath } from "url";
 import { Config } from "../../utils/config.js";
 import { generateSuccessResponse } from "../../utils/responseGenerator.js";
+import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
 
+const inputSchema = z.object({});
 
 export const makeTool = (config: Config) => {
     return {
         name: "strava-auth",
         description: "Authenticates with Strava using the provided credentials.",
-        inputSchema: {},
+        inputSchema: inputSchema,
         execute: makeExecuteFn(config)
     }
 }
@@ -23,7 +25,7 @@ const makeExecuteFn = (config: Config) => {
         log.info("Authenticating with Strava...");
         log.info("Redirecting to the auth page...");
         const text = `{
-            "status": "redirect",
+            "redirect": true,
             "message": "Redirecting to the requested resource.",
             "redirect_url": "${config.stravaRedirectUri}/auth",
             "meta": {
