@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { fileURLToPath } from "url";
 import { getAllActivities as fetchAllActivities } from '../../client/stravaClient.js';
-import { formatDuration } from '../../utils/formatters.js';
+// import { formatDuration } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
 import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
 import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
@@ -76,34 +76,35 @@ const GetAllActivitiesOutputSchema = z.object({
     activities: StravaActivitiesResponseSchema
 }
 );
-const getActivityTypeFromName = (name: string): string | null => {
-    const allTypes = { ...ACTIVITY_TYPES, ...SPORT_TYPES };
-    for (const key in allTypes) {
-        if (name.toLowerCase().includes(allTypes[key as keyof typeof allTypes].toLowerCase())) {
-            return allTypes[key as keyof typeof allTypes];
-        }
-    }
-    return 'Unknown';
-};
+
+// const getActivityTypeFromName = (name: string): string | null => {
+//     const allTypes = { ...ACTIVITY_TYPES, ...SPORT_TYPES };
+//     for (const key in allTypes) {
+//         if (name.toLowerCase().includes(allTypes[key as keyof typeof allTypes].toLowerCase())) {
+//             return allTypes[key as keyof typeof allTypes];
+//         }
+//     }
+//     return 'Unknown';
+// };
 
 // Helper function to format activity summary
-function formatActivitySummary(activity: any): string {
-    const date = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
-    const distance = activity.distance ? `${(activity.distance / 1000).toFixed(2)} km` : 'N/A';
-    const duration = activity.moving_time ? formatDuration(activity.moving_time) : 'N/A';
-    const elevation = activity.total_elevation_gain ? `${activity.total_elevation_gain.toFixed(0)} m` : 'N/A';
-    const type = activity.sport_type || activity.type || getActivityTypeFromName(activity.name);
+// function formatActivitySummary(activity: any): string {
+//     const date = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
+//     const distance = activity.distance ? `${(activity.distance / 1000).toFixed(2)} km` : 'N/A';
+//     const duration = activity.moving_time ? formatDuration(activity.moving_time) : 'N/A';
+//     const elevation = activity.total_elevation_gain ? `${activity.total_elevation_gain.toFixed(0)} m` : 'N/A';
+//     const type = activity.sport_type || activity.type || getActivityTypeFromName(activity.name);
 
-    let emoji = '🏃';
-    if (type.toLowerCase().includes('ride') || type.toLowerCase().includes('bike')) emoji = '🚴';
-    else if (type.toLowerCase().includes('swim')) emoji = '🏊';
-    else if (type.toLowerCase().includes('ski')) emoji = '⛷️';
-    else if (type.toLowerCase().includes('hike') || type.toLowerCase().includes('walk')) emoji = '🥾';
-    else if (type.toLowerCase().includes('yoga')) emoji = '🧘';
-    else if (type.toLowerCase().includes('weight')) emoji = '💪';
+//     let emoji = '🏃';
+//     if (type.toLowerCase().includes('ride') || type.toLowerCase().includes('bike')) emoji = '🚴';
+//     else if (type.toLowerCase().includes('swim')) emoji = '🏊';
+//     else if (type.toLowerCase().includes('ski')) emoji = '⛷️';
+//     else if (type.toLowerCase().includes('hike') || type.toLowerCase().includes('walk')) emoji = '🥾';
+//     else if (type.toLowerCase().includes('yoga')) emoji = '🧘';
+//     else if (type.toLowerCase().includes('weight')) emoji = '💪';
 
-    return `${emoji} ${activity.name} (${type}) - Covered ${distance} in ${duration} on ${date} ${type === 'Ride' || type === 'Run' ? `with ${elevation} elevation gain` : ''}`;
-}
+//     return `${emoji} ${activity.name} (${type}) - Covered ${distance} in ${duration} on ${date} ${type === 'Ride' || type === 'Run' ? `with ${elevation} elevation gain` : ''}`;
+// }
 
 export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
     return {

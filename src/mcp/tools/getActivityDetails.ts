@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
     getActivityById as fetchActivityById,
 } from '../../client/stravaClient.js';
-import { DetailedActivitySchema, StravaDetailedActivityType } from '../../schema/index.js';
-import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../../utils/formatters.js';
+import { DetailedActivitySchema } from '../../schema/index.js';
+// import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
 import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
@@ -29,38 +29,38 @@ const GetActivityDetailsOutputSchema = z.object({
 
 
 // Format activity details (Metric Only)
-function formatActivityDetails(activity: StravaDetailedActivityType): string {
-    const date = new Date(activity.start_date_local).toLocaleString();
-    const movingTime = formatDuration(activity.moving_time);
-    const elapsedTime = formatDuration(activity.elapsed_time);
-    const distance = formatDistance(activity.distance);
-    const elevation = formatElevation(activity.total_elevation_gain);
-    const avgSpeed = formatSpeed(activity.average_speed);
-    const maxSpeed = formatSpeed(activity.max_speed);
-    const avgPace = formatPace(activity.average_speed); // Calculate pace from speed
+// function formatActivityDetails(activity: StravaDetailedActivityType): string {
+//     const date = new Date(activity.start_date_local).toLocaleString();
+//     const movingTime = formatDuration(activity.moving_time);
+//     const elapsedTime = formatDuration(activity.elapsed_time);
+//     const distance = formatDistance(activity.distance);
+//     const elevation = formatElevation(activity.total_elevation_gain);
+//     const avgSpeed = formatSpeed(activity.average_speed);
+//     const maxSpeed = formatSpeed(activity.max_speed);
+//     const avgPace = formatPace(activity.average_speed); // Calculate pace from speed
 
-    let details = `🏃 **${activity.name}** (ID: ${activity.id})\n`;
-    details += `   - Type: ${activity.type} (${activity.sport_type})\n`;
-    details += `   - Date: ${date}\n`;
-    details += `   - Moving Time: ${movingTime}, Elapsed Time: ${elapsedTime}\n`;
-    if (activity.distance !== undefined) details += `   - Distance: ${distance}\n`;
-    if (activity.total_elevation_gain !== undefined) details += `   - Elevation Gain: ${elevation}\n`;
-    if (activity.average_speed !== undefined) {
-        details += `   - Average Speed: ${avgSpeed}`;
-        if (activity.type === 'Run') details += ` (Pace: ${avgPace})`;
-        details += '\n';
-    }
-    if (activity.max_speed !== undefined) details += `   - Max Speed: ${maxSpeed}\n`;
-    if (activity.average_cadence !== undefined && activity.average_cadence !== null) details += `   - Avg Cadence: ${activity.average_cadence.toFixed(1)}\n`;
-    if (activity.average_watts !== undefined && activity.average_watts !== null) details += `   - Avg Watts: ${activity.average_watts.toFixed(1)}\n`;
-    if (activity.average_heartrate !== undefined && activity.average_heartrate !== null) details += `   - Avg Heart Rate: ${activity.average_heartrate.toFixed(1)} bpm\n`;
-    if (activity.max_heartrate !== undefined && activity.max_heartrate !== null) details += `   - Max Heart Rate: ${activity.max_heartrate.toFixed(0)} bpm\n`;
-    if (activity.calories !== undefined) details += `   - Calories: ${activity.calories.toFixed(0)}\n`;
-    if (activity.description) details += `   - Description: ${activity.description}\n`;
-    if (activity.gear) details += `   - Gear: ${activity.gear.name}\n`;
+//     let details = `🏃 **${activity.name}** (ID: ${activity.id})\n`;
+//     details += `   - Type: ${activity.type} (${activity.sport_type})\n`;
+//     details += `   - Date: ${date}\n`;
+//     details += `   - Moving Time: ${movingTime}, Elapsed Time: ${elapsedTime}\n`;
+//     if (activity.distance !== undefined) details += `   - Distance: ${distance}\n`;
+//     if (activity.total_elevation_gain !== undefined) details += `   - Elevation Gain: ${elevation}\n`;
+//     if (activity.average_speed !== undefined) {
+//         details += `   - Average Speed: ${avgSpeed}`;
+//         if (activity.type === 'Run') details += ` (Pace: ${avgPace})`;
+//         details += '\n';
+//     }
+//     if (activity.max_speed !== undefined) details += `   - Max Speed: ${maxSpeed}\n`;
+//     if (activity.average_cadence !== undefined && activity.average_cadence !== null) details += `   - Avg Cadence: ${activity.average_cadence.toFixed(1)}\n`;
+//     if (activity.average_watts !== undefined && activity.average_watts !== null) details += `   - Avg Watts: ${activity.average_watts.toFixed(1)}\n`;
+//     if (activity.average_heartrate !== undefined && activity.average_heartrate !== null) details += `   - Avg Heart Rate: ${activity.average_heartrate.toFixed(1)} bpm\n`;
+//     if (activity.max_heartrate !== undefined && activity.max_heartrate !== null) details += `   - Max Heart Rate: ${activity.max_heartrate.toFixed(0)} bpm\n`;
+//     if (activity.calories !== undefined) details += `   - Calories: ${activity.calories.toFixed(0)}\n`;
+//     if (activity.description) details += `   - Description: ${activity.description}\n`;
+//     if (activity.gear) details += `   - Gear: ${activity.gear.name}\n`;
 
-    return details;
-}
+//     return details;
+// }
 
 export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
     return {
