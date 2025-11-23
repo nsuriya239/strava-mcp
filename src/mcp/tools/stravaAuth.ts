@@ -44,7 +44,6 @@ const makeExecuteFn = (config: Config) => {
                 timestamp: new Date().toISOString()
             }
         }
-        log.info(`Response :: ${JSON.stringify(generateSuccessResponse(JSON.stringify(structuredData), structuredData))}`);
         return generateSuccessResponse(JSON.stringify(structuredData), structuredData);
     }
 }
