@@ -4,6 +4,7 @@ import { makeTools } from "./tools/index.js"
 import { createLogger } from "../utils/logger.js";
 import { fileURLToPath } from "url";
 import { Config } from "../utils/config.js";
+import { Tool } from "./types.js";
 
 const log = createLogger(fileURLToPath(import.meta.url));
 
@@ -11,14 +12,17 @@ export const registerTools = (server: McpServer, repositories: IRepository, conf
     log.info("Registering MCP Tools ...");
     const { stravaAuthRepository } = repositories;
 
-    const tools = makeTools(stravaAuthRepository, config);
+    const tools: Tool[] = makeTools(stravaAuthRepository, config);
 
     for (const tool of tools) {
-        server.tool(
+        server.registerTool(
             tool.name,
-            tool.description,
-            (tool.inputSchema as any).shape,
-            (tool as any).execute
+            {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema,
+            },
+            tool.execute
         );
     }
 

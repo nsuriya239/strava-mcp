@@ -22,7 +22,9 @@ import { makeTool as makeFormatWorkoutFileTool } from './formatWorkoutFile.js';
 import { makeTool as makeStravaAuthTool } from './stravaAuth.js';
 import { Config } from "../../utils/config.js";
 
-export const makeTools = (stravaAuthRepository: StravaAuthRepository, config: Config) => {
+import { Tool } from "../types.js";
+
+export const makeTools = (stravaAuthRepository: StravaAuthRepository, config: Config): Tool[] => {
     return [
         makeGetAthleteProfileTool(stravaAuthRepository),
         makeGetAthleteStatsTool(stravaAuthRepository),
