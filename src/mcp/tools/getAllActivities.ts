@@ -6,6 +6,7 @@ import { createLogger } from '../../utils/logger.js';
 import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
 import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
 import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
+import { StravaActivitiesResponseSchema, StravaActivitiesResponseType } from "../../schema/activity.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -71,6 +72,10 @@ const GetAllActivitiesInputSchema = z.object({
 
 type GetAllActivitiesInput = z.infer<typeof GetAllActivitiesInputSchema>;
 
+const GetAllActivitiesOutputSchema = z.object({
+    activities: StravaActivitiesResponseSchema
+}
+);
 const getActivityTypeFromName = (name: string): string | null => {
     const allTypes = { ...ACTIVITY_TYPES, ...SPORT_TYPES };
     for (const key in allTypes) {
@@ -105,7 +110,8 @@ export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
         name: "get-all-activities",
         description: "Fetches complete activity history with optional filtering by date range and activity type. Supports pagination to retrieve all activities.",
         inputSchema: GetAllActivitiesInputSchema,
-        execute: makeExecuteFn(stravaAuthRepository)
+        execute: makeExecuteFn(stravaAuthRepository),
+        outputSchema: GetAllActivitiesOutputSchema,
     }
 }
 
@@ -150,8 +156,8 @@ const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
             log.error(`  Sport types: ${sportTypes?.join(', ') || 'any'}`);
             log.error(`  Max activities: ${maxActivities}, Max API calls: ${maxApiCalls}`);
 
-            const allActivities: any[] = [];
-            const filteredActivities: any[] = [];
+            const allActivities: StravaActivitiesResponseType = [];
+            const filteredActivities: StravaActivitiesResponseType = [];
             let apiCalls = 0;
             let currentPage = 1;
             let hasMore = true;
@@ -236,23 +242,28 @@ const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
                 return generateSuccessResponse(`No activities found matching your criteria.\n\nStatistics:\n- Fetched ${stats.totalFetched} activities\n- ${stats.totalMatching} matched filters\n- Used ${stats.apiCalls} API calls`);
             }
 
-            // Format activities for display
-            const summaries = resultsToReturn.map(activity => formatActivitySummary(activity));
+            // // Format activities for display
+            // const summaries = resultsToReturn.map(activity => formatActivitySummary(activity));
 
-            // Build response text
-            let responseText = `**Found ${stats.returned} activities**\n\n`;
-            responseText += `📊 Statistics:\n`;
-            responseText += `- Total fetched: ${stats.totalFetched}\n`;
-            responseText += `- Matching filters: ${stats.totalMatching}\n`;
-            responseText += `- API calls: ${stats.apiCalls}\n\n`;
+            // // Build response text
+            // let responseText = `**Found ${stats.returned} activities**\n\n`;
+            // responseText += `📊 Statistics:\n`;
+            // responseText += `- Total fetched: ${stats.totalFetched}\n`;
+            // responseText += `- Matching filters: ${stats.totalMatching}\n`;
+            // responseText += `- API calls: ${stats.apiCalls}\n\n`;
 
-            if (stats.returned < stats.totalMatching) {
-                responseText += `⚠️ Showing first ${stats.returned} of ${stats.totalMatching} matching activities (limited by maxActivities)\n\n`;
+            // if (stats.returned < stats.totalMatching) {
+            //     responseText += `⚠️ Showing first ${stats.returned} of ${stats.totalMatching} matching activities (limited by maxActivities)\n\n`;
+            // }
+
+            // responseText += `**Activities:**\n${summaries.join('\n')}`;
+
+            const structuredResponse = {
+                activities: resultsToReturn
             }
 
-            responseText += `**Activities:**\n${summaries.join('\n')}`;
 
-            return generateSuccessResponse(responseText);
+            return generateSuccessResponse(JSON.stringify(structuredResponse), structuredResponse);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";

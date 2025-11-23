@@ -1,4 +1,4 @@
-import { StravaActivitiesResponseSchema, StravaDetailedActivityType, DetailedActivitySchema, StravaLapType, StravaLapsResponseSchema } from '../schema/index.js';
+import { StravaActivitiesResponseSchema, StravaDetailedActivityType, DetailedActivitySchema, StravaLapType, StravaLapsResponseSchema, StravaActivitiesResponseType } from '../schema/index.js';
 import { stravaApi, handleApiError } from '../client/stravaClient.js';
 import { GetAllActivitiesParams } from "./types.js";
 import { createLogger } from '../utils/logger.js';
@@ -15,7 +15,7 @@ const log = createLogger(__filename);
  * @returns A promise that resolves to an array of Strava activities.
  * @throws Throws an error if the API request fails or the response format is unexpected.
  */
-export async function getRecentActivities(accessToken: string, perPage = 30): Promise<any[]> {
+export async function getRecentActivities(accessToken: string, perPage = 30): Promise<StravaActivitiesResponseType> {
     if (!accessToken) {
         throw new Error("Strava access token is required.");
     }
@@ -56,7 +56,7 @@ export async function getRecentActivities(accessToken: string, perPage = 30): Pr
 export async function getAllActivities(
     accessToken: string,
     params: GetAllActivitiesParams = {}
-): Promise<any[]> {
+): Promise<StravaActivitiesResponseType> {
     if (!accessToken) {
         throw new Error("Strava access token is required.");
     }

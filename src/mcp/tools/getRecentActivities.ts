@@ -5,6 +5,7 @@ import { createLogger } from '../../utils/logger.js';
 import { StravaAuthRepository } from "../../repository/strava_auth_repository.js";
 import { AUTH_ERROR_RESPONSE } from "../../utils/constants.js";
 import { generateErrorResponse, generateSuccessResponse } from "../../utils/responseGenerator.js";
+import { StravaActivitiesResponseSchema } from "../../schema/activity.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const log = createLogger(__filename);
@@ -17,12 +18,17 @@ const GetRecentActivitiesInputSchema = z.object({
 
 type GetRecentActivitiesInput = z.infer<typeof GetRecentActivitiesInputSchema>;
 
+const GetRecentActivitiesOutputSchema = z.object({
+  activities: StravaActivitiesResponseSchema
+});
+
 export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
   return {
     name: "get-recent-activities",
     description: "Fetches the most recent activities for the authenticated athlete.",
     inputSchema: GetRecentActivitiesInputSchema,
-    execute: makeExecuteFn(stravaAuthRepository)
+    execute: makeExecuteFn(stravaAuthRepository),
+    outputSchema: GetRecentActivitiesOutputSchema
   }
 }
 
@@ -45,13 +51,17 @@ const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
       }
 
       // Map to content items with literal type
-      const contentItems = activities.map(activity => {
-        const dateStr = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
-        const distanceStr = activity.distance ? `${activity.distance}m` : 'N/A';
-        return `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr}`;
-      });
+      // const contentItems = activities.map(activity => {
+      //   const dateStr = activity.start_date ? new Date(activity.start_date).toLocaleDateString() : 'N/A';
+      //   const distanceStr = activity.distance ? `${activity.distance}m` : 'N/A';
+      //   return `🏃 ${activity.name} (ID: ${activity.id ?? 'N/A'}) — ${distanceStr} on ${dateStr}`;
+      // });
 
-      return generateSuccessResponse(contentItems.join("\n"));
+      const structuredResponse = {
+        activities
+      }
+
+      return generateSuccessResponse(JSON.stringify(structuredResponse), structuredResponse);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";

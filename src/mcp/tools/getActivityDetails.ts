@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
     getActivityById as fetchActivityById,
 } from '../../client/stravaClient.js';
-import { StravaDetailedActivityType } from '../../schema/index.js';
+import { DetailedActivitySchema, StravaDetailedActivityType } from '../../schema/index.js';
 import { formatDistance, formatDuration, formatPace, formatSpeed, formatElevation } from '../../utils/formatters.js';
 import { createLogger } from '../../utils/logger.js';
 import { fileURLToPath } from "url";
@@ -22,6 +22,10 @@ const GetActivityDetailsInputSchema = z.object({
 });
 
 type GetActivityDetailsInput = z.infer<typeof GetActivityDetailsInputSchema>;
+
+const GetActivityDetailsOutputSchema = z.object({
+    activity: DetailedActivitySchema,
+});
 
 
 // Format activity details (Metric Only)
@@ -63,7 +67,8 @@ export const makeTool = (stravaAuthRepository: StravaAuthRepository) => {
         name: "get-activity-details",
         description: "Fetches detailed information about a specific activity using its ID.",
         inputSchema: GetActivityDetailsInputSchema,
-        execute: makeExecuteFn(stravaAuthRepository)
+        execute: makeExecuteFn(stravaAuthRepository),
+        outputSchema: GetActivityDetailsOutputSchema,
     }
 }
 
@@ -80,10 +85,14 @@ const makeExecuteFn = (stravaAuthRepository: StravaAuthRepository) => {
             log.info(`Fetching details for activity ID: ${activityId}...`);
             // Removed getAuthenticatedAthlete call
             const activity = await fetchActivityById(token, activityId);
-            const activityDetailsText = formatActivityDetails(activity); // Use metric formatter
-
+            // const activityDetailsText = formatActivityDetails(activity); // Use metric formatter
             log.info(`Successfully fetched details for activity: ${activity.name}`);
-            return generateSuccessResponse(activityDetailsText);
+
+            const structuredResponse = {
+                activity: activity,
+            }
+
+            return generateSuccessResponse(JSON.stringify(structuredResponse), structuredResponse);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             log.error(`Error fetching activity ${activityId}: ${errorMessage}`);
