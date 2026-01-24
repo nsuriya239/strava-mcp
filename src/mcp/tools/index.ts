@@ -3,6 +3,7 @@ import { makeTool as makeGetAthleteProfileTool } from './getAthleteProfile.js';
 // import { makeTool as makeGetAthleteStatsTool } from './getAthleteStats.js';
 import { makeTool as makeGetActivityDetailsTool } from './getActivityDetails.js';
 import { makeTool as makeGetRecentActivitiesTool } from './getRecentActivities.js';
+import { makeTool as makeGetLastActivityTool } from './getLastActivity.js';
 // import { makeTool as makeListAthleteClubsTool } from './listAthleteClubs.js';
 // import { makeTool as makeListStarredSegmentsTool } from './listStarredSegments.js';
 // import { makeTool as makeGetSegmentTool } from './getSegment.js';
@@ -30,6 +31,7 @@ export const makeTools = (stravaAuthRepository: StravaAuthRepository, config: Co
         // makeGetAthleteStatsTool(stravaAuthRepository),
         makeGetActivityDetailsTool(stravaAuthRepository),
         makeGetRecentActivitiesTool(stravaAuthRepository),
+        makeGetLastActivityTool(stravaAuthRepository),
         // makeListAthleteClubsTool(stravaAuthRepository),
         // makeListStarredSegmentsTool(stravaAuthRepository),
         // makeGetSegmentTool(stravaAuthRepository),

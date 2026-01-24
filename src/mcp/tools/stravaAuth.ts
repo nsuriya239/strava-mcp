@@ -12,12 +12,12 @@ const log = createLogger(__filename);
 const inputSchema = z.object({});
 
 const outputSchema = z.object({
-    redirect: z.boolean(),
-    message: z.string(),
-    redirect_url: z.string(),
+    redirect: z.boolean().describe("Indicates if the request should be redirected"),
+    message: z.string().describe("A message to the user"),
+    redirect_url: z.string().describe("The URL to redirect to"),
     meta: z.object({
-        reason: z.string(),
-        timestamp: z.string()
+        reason: z.string().describe("The reason for the redirect"),
+        timestamp: z.string().describe("The timestamp of the redirect")
     })
 });
 
